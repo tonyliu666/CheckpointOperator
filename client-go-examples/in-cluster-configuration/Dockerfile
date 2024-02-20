@@ -1,3 +1,3 @@
 FROM busybox
-COPY ./in-cluster-configuration/ /app
+COPY ./ /app
 ENTRYPOINT /app/in-cluster

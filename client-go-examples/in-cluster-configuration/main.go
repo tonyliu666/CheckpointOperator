@@ -11,6 +11,7 @@ import (
 )
 
 func main() {
+	// for the container to access the kubernetes cluster, it needs to be running inside the cluster(rest.InClusterConfig())
 	config, err := rest.InClusterConfig()
 
 	if err != nil {

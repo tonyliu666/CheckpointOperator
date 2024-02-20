@@ -1,0 +1,12 @@
+apiVersion: apps.tonyliu666.tw/v1alpha1
+kind: Configuration
+metadata:
+  labels:
+    app.kubernetes.io/name: configuration
+    app.kubernetes.io/instance: configuration-sample
+    app.kubernetes.io/part-of: application-operator-v2
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: application-operator-v2
+  name: configuration-sample
+spec:
+  # TODO(user): Add fields here
