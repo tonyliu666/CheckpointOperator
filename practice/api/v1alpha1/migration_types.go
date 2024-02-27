@@ -29,7 +29,8 @@ type MigrationSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of Migration. Edit migration_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
+	PodName   string `json:"podname,omitempty"`
 }
 
 // MigrationStatus defines the observed state of Migration

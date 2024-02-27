@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: newcounter2
+spec:
+  containers:
+  - name: counter
+    image: quay.io/adrianreber/counter:blog
+  nodeName: workernode01

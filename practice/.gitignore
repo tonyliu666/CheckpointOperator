@@ -26,3 +26,4 @@ go.work
 *.swp
 *.swo
 *~
+ssh_key/*
