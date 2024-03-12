@@ -5,6 +5,8 @@ metadata:
 spec:
   # TODO(user): Add fields here
   namespace: default
-  podname: counters3
+  podname: counter-app
+  # should add destination node
+  # destination: kubenode01
 
   

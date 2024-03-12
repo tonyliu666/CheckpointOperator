@@ -17,12 +17,12 @@ func GetKubeletClient() *http.Client {
 		return clientCache
 	}
 	// clientCertPrefix := "/etc/kubernetes/pki"
-	clientCertPrefix := "/home/Tony/cka/deployment-env"
+	clientCertPrefix := "/home/Tony/cka/kubeadm-vagrant-playground"
 	clientCert, err := tls.LoadX509KeyPair(
 		// fmt.Sprintf("%s/client.crt", clientCertPrefix),
-		fmt.Sprintf("%s/apiserver-kubelet-client2.crt", clientCertPrefix),
+		fmt.Sprintf("%s/apiserver-kubelet-client.crt", clientCertPrefix),
 		//fmt.Sprintf("%s/client.key", clientCertPrefix),
-		fmt.Sprintf("%s/apiserver-kubelet-client2.key", clientCertPrefix),
+		fmt.Sprintf("%s/apiserver-kubelet-client.key", clientCertPrefix),
 	)
 	if err != nil {
 		log.Log.Error(err, "could not read client cert key pair")
@@ -30,7 +30,7 @@ func GetKubeletClient() *http.Client {
 	certs := x509.NewCertPool()
 
 	// We should really load this path dynamically as this depends on deep internals of kubernetes
-	pemData, err := os.ReadFile(fmt.Sprintf("%s/ca2.crt", clientCertPrefix))
+	pemData, err := os.ReadFile(fmt.Sprintf("%s/ca.crt", clientCertPrefix))
 	if err != nil {
 		log.Log.Error(err, "could not read ca file")
 	}
