@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-restore
+spec:
+  containers:
+  - name: nginx-restore
+    image: docker.io/tonyliu666/checkpoint:latest
+  nodeName: kubenode01

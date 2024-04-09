@@ -2,13 +2,11 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: nginx-deployment
-  labels:
-    app: nginx
 spec:
-  replicas: 3
   selector:
     matchLabels:
       app: nginx
+  replicas: 2
   template:
     metadata:
       labels:
@@ -16,7 +14,6 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: 140.114.91.175/test/busy:v1
+        image: docker.io/nginx:latest # Update the version of nginx from 1.14.2 to 1.16.1
         ports:
         - containerPort: 80
-      nodeName: workernode01

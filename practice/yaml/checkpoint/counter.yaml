@@ -1,9 +1,10 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: counters
+  name: counter-app
+  namespace: default
 spec:
   containers:
   - name: counter
     image: quay.io/adrianreber/counter:blog
-  nodeName: kubenode02
+  nodeName: kubenode01

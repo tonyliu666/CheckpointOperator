@@ -75,11 +75,7 @@ func (r *MigrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// TODO(user): your logic here
 	// make install before running the operator, because for api perspective, they don't understand the CRD
-	// migration := &apiv1alpha1.Migration{}
-	// pod := &corev1.Pod{}
-
 	// loop over the pods in default namespace and find the pods with the postgresql image
-	// Get the client
 	podList := &corev1.PodList{}
 	// get the migration object
 	migration := &apiv1alpha1.Migration{}
@@ -189,9 +185,14 @@ func (r *MigrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				// bind mount the checkpointed image to the buildah container
 				num := int32(1)
 
+				// find the registry service
+				registryIp := ReturnRegistryIP(clientset, &pod)
+
 				deployment := &appsv1.Deployment{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "buildah-deployment",
+						// set the same namespace as the pod
+						
 					},
 					Spec: appsv1.DeploymentSpec{
 						Replicas: &num,
@@ -206,24 +207,31 @@ func (r *MigrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 									"app": "buildah",
 								},
 							},
+							// specify the pod should be created on the node where the pod is running
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{
 									{
 										// privileged container
 										Name:  "buildah",
 										Image: "quay.io/buildah/stable",
-										Command: []string{
-											"/bin/bash",
+										SecurityContext: &corev1.SecurityContext{
+											Privileged: func() *bool { b := true; return &b }(),
 										},
+										Command: []string{"/bin/bash"},
+										
 										Args: []string{
 											"-c",
-											"buildah bud -t buildah-image /image",
+											"newcontainer=$(buildah from scratch); buildah add $newcontainer " + kubeletResponse.Items[0] + "; buildah config --annotation=io.kubernetes.cri-o.annotations.checkpoint.name=default-counter $newcontainer; buildah commit $newcontainer checkpoint-image:latest; buildah rm $newcontainer; buildah push --creds=myuser:mypasswd --tls-verify=false localhost/checkpoint-image:latest "+ registryIp+":5000/checkpoint-image:latest; while true; do sleep 30; done;",
+											// buildah push checkpoint-image to nodeIP:nodePort with username and password, username=myuser and password=mypasswd
+											// buildah push --creds=myuser:mypasswd --tls-verify=false localhost/checkpoint-image:latest 10.85.0.8:5000/checkpoint-image:latest
+											
+											
 										},
-										// bind mount the checkpointed image /var/lib/kubelet/checkpoints/ to /image
+
 										VolumeMounts: []corev1.VolumeMount{
 											{
 												Name:      "checkpointed-image",
-												MountPath: "/image",
+												MountPath: "/var/lib/kubelet/checkpoints/",
 											},
 										},
 									},
@@ -238,21 +246,43 @@ func (r *MigrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 										},
 									},
 								},
+								NodeName: pod.Spec.NodeName,
 							},
 						},
 					},
 				}
 
-				createdDeployment, err := clientset.AppsV1().Deployments("default").Create(context.TODO(), deployment, metav1.CreateOptions{})
+
+				
+				createdDeployment, err := clientset.AppsV1().Deployments(migration.Spec.Namespace).Create(context.TODO(), deployment, metav1.CreateOptions{})
 				if err != nil {
 					panic(err.Error())
 				}
 				fmt.Printf("Deployment %q created\n", createdDeployment.GetObjectMeta().GetName())
+				
 			}
 		}
 	}
 
 	return ctrl.Result{}, nil
+}
+func ReturnRegistryIP(clientset *kubernetes.Clientset, pod *corev1.Pod) string {
+	// find the registry pod which is on the same node as the pod
+	registryPodList, err := clientset.CoreV1().Pods("docker-registry").List(context.TODO(), metav1.ListOptions{
+		LabelSelector: "app=docker-registry",
+	})
+	if err != nil {
+		panic(err.Error())
+	}
+	// find the registry pod which is on the same node as the pod
+	var registryPod corev1.Pod
+	for _, registryPod = range registryPodList.Items {
+		if registryPod.Spec.NodeName == pod.Spec.NodeName {
+			break
+		}
+	}
+	return registryPod.Status.PodIP
+	
 }
 
 // SetupWithManager sets up the controller with the Manager.
