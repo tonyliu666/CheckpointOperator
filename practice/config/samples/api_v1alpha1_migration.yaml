@@ -4,9 +4,14 @@ metadata:
   name: migration-sample
 spec:
   # TODO(user): Add fields here
-  namespace: default
   podname: counter-app
-  # should add destination node
-  # destination: kubenode01
+  # deployment: counter
+  deployment: counter-app
+  namespace: default
+  destination: kubenode02
+
+  # Optional field: deployment
+  # Users can choose to include it or leave it empty
+  # deployment: 
 
   

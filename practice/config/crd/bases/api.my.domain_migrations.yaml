@@ -39,12 +39,21 @@ spec:
           spec:
             description: MigrationSpec defines the desired state of Migration
             properties:
+              deployment:
+                description: deployment can be optional
+                type: string
+              destination:
+                type: string
               namespace:
+                type: string
+              podname:
                 description: Foo is an example field of Migration. Edit migration_types.go
                   to remove/update
                 type: string
-              podname:
-                type: string
+            required:
+            - destination
+            - namespace
+            - podname
             type: object
           status:
             description: MigrationStatus defines the observed state of Migration
