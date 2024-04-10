@@ -21,27 +21,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
-	"strings"
-	"time"
-
-	// "time"
-
-	"net/http"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+
+	//"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	apiv1alpha1 "tony123.tw/api/v1alpha1"
+	"tony123.tw/handlers"
 	handler "tony123.tw/handlers"
+	"tony123.tw/util"
 )
 
 // MigrationReconciler reconciles a Migration object
@@ -118,14 +112,12 @@ func CheckpointDeployment(ctx context.Context, r *MigrationReconciler, migration
 		return
 	}
 
-
 	listOptions := &client.ListOptions{
 		Namespace:     namespace,
 		LabelSelector: labelSelector,
 	}
 
 	// get the pods in the deployment
-
 	CheckpointSinglePod(ctx, r, migration, listOptions)
 
 }
@@ -162,7 +154,7 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 				log.Log.Info("checkpoint kubelet", "address", address)
 				client := handler.GetKubeletClient()
 
-				resp, err := CheckpointPod(client, address)
+				resp, err := handler.CheckpointPod(client, address)
 				if err != nil {
 					log.Log.Error(err, "unable to checkpoint the pod")
 					return
@@ -184,151 +176,31 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 				}
 				log.Log.Info("got response", "response", kubeletResponse, "body", string(body))
 
-				clientset := CreateClientSet()
+				clientset,err := util.CreateClientSet()
 
-				// Create a new deployment with image buildah
-				// docker run -–privileged -v ./image/:/image -ti quay.io/buildah/stable /bin/bash
-				// bind mount the checkpointed image to the buildah container
-
-				// find the pod ip of registry pod
-				registryIp := ReturnRegistryIP(clientset, pod.Spec.NodeName)
-				deployment := CreateBuildahDeployment(pod.Spec.NodeName, kubeletResponse, registryIp)
-
-				createdDeployment, err := clientset.AppsV1().Deployments(migration.Spec.Namespace).Create(context.TODO(), deployment, metav1.CreateOptions{})
 				if err != nil {
-					panic(err.Error())
+					log.Log.Error(err, "unable to create clientset")
+					return
 				}
-				logger.Info("Deployment %q created\n", createdDeployment.GetObjectMeta().GetName())
+					
+				// find the pod ip of registry pod
+				registryIp,err := handlers.ReturnRegistryIP(clientset, pod.Spec.NodeName)
+				if err != nil {
+					log.Log.Error(err, "unable to get the registry ip")
+					return
+				}
+
+				err = handlers.BuildahPodPushImage(pod.Spec.NodeName, "docker-registry", kubeletResponse.Items[0], registryIp)
+
+				// check the status of buildah pod already completed
+				// check the status of the deployment
+
 			}
 		}
 	}
 }
 
-func CheckpointPod(client *http.Client, address string) (*http.Response, error) {
-	logger := log.Log
-	CheckpointStartTime := time.Now()
-	resp, err := client.Post(address, "application/json", strings.NewReader(""))
-	CheckpointEndTime := time.Now()
-	CheckpointDuration := CheckpointEndTime.Sub(CheckpointStartTime).Milliseconds()
-	logger.Info("Checkpoint Duration: ", "Duration", CheckpointDuration)
-	// err now is facing the problem that the status code is 401 unauthorized
-	if err != nil {
-		logger.Error(err, "unable to send the request")
-		return nil, err
-	}
-	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
-		logger.Error(err, "unable to checkpoint the container")
-		return nil, fmt.Errorf("unable to checkpoint the container")
-	}
-	// check the response status code
-	if resp.StatusCode != http.StatusOK {
-		logger.Error(err, "unable to checkpoint the container")
-		return nil, fmt.Errorf("unable to checkpoint the container")
-	}
-	return resp, nil
-}
 
-func CreateClientSet() *kubernetes.Clientset {
-	// get the kubernetes config
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		// If running outside the cluster, use kubeconfig file
-		kubeconfig := os.Getenv("HOME") + "/.kube/config"
-		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
-		if err != nil {
-			panic(err.Error())
-		}
-	}
-
-	// Create Kubernetes client
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		panic(err.Error())
-	}
-	return clientset
-}
-func ReturnRegistryIP(clientset *kubernetes.Clientset, nodeName string) string {
-	// find the registry pod which is on the same node as the pod
-	registryPodList, err := clientset.CoreV1().Pods("docker-registry").List(context.TODO(), metav1.ListOptions{
-		LabelSelector: "app=docker-registry",
-	})
-	if err != nil {
-		panic(err.Error())
-	}
-	// find the registry pod which is on the same node as the pod
-	var registryPod corev1.Pod
-	for _, registryPod = range registryPodList.Items {
-		if registryPod.Spec.NodeName == nodeName {
-			break
-		}
-	}
-	return registryPod.Status.PodIP
-
-}
-func CreateBuildahDeployment(NodeName string, kubeletResponse *kubeletCheckpointResponse, registryIp string) *appsv1.Deployment {
-	num := int32(1)
-	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "buildah-deployment",
-			// set the same namespace as the pod
-
-		},
-		Spec: appsv1.DeploymentSpec{
-			Replicas: &num,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app": "buildah",
-				},
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"app": "buildah",
-					},
-				},
-				// specify the pod should be created on the node where the pod is running
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							// privileged container
-							Name:  "buildah",
-							Image: "quay.io/buildah/stable",
-							SecurityContext: &corev1.SecurityContext{
-								Privileged: func() *bool { b := true; return &b }(),
-							},
-							Command: []string{"/bin/bash"},
-
-							Args: []string{
-								"-c",
-								"newcontainer=$(buildah from scratch); buildah add $newcontainer " + kubeletResponse.Items[0] + "; buildah config --annotation=io.kubernetes.cri-o.annotations.checkpoint.name=default-counter $newcontainer; buildah commit $newcontainer checkpoint-image:latest; buildah rm $newcontainer; buildah push --creds=myuser:mypasswd --tls-verify=false localhost/checkpoint-image:latest " + registryIp + ":5000/checkpoint-image:latest; while true; do sleep 30; done;",
-								// buildah push checkpoint-image to nodeIP:nodePort with username and password, username=myuser and password=mypasswd
-								// buildah push --creds=myuser:mypasswd --tls-verify=false localhost/checkpoint-image:latest 10.85.0.8:5000/checkpoint-image:latest
-							},
-
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "checkpointed-image",
-									MountPath: "/var/lib/kubelet/checkpoints/",
-								},
-							},
-						},
-					},
-					Volumes: []corev1.Volume{
-						{
-							Name: "checkpointed-image",
-							VolumeSource: corev1.VolumeSource{
-								HostPath: &corev1.HostPathVolumeSource{
-									Path: "/var/lib/kubelet/checkpoints/",
-								},
-							},
-						},
-					},
-					NodeName: NodeName,
-				},
-			},
-		},
-	}
-}
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *MigrationReconciler) SetupWithManager(mgr ctrl.Manager) error {

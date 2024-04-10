@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -26,6 +28,7 @@ func GetKubeletClient() *http.Client {
 	)
 	if err != nil {
 		log.Log.Error(err, "could not read client cert key pair")
+		return nil
 	}
 	certs := x509.NewCertPool()
 
@@ -33,6 +36,7 @@ func GetKubeletClient() *http.Client {
 	pemData, err := os.ReadFile(fmt.Sprintf("%s/ca.crt", clientCertPrefix))
 	if err != nil {
 		log.Log.Error(err, "could not read ca file")
+		return nil
 	}
 	certs.AppendCertsFromPEM(pemData)
 	tr := &http.Transport{
@@ -43,4 +47,28 @@ func GetKubeletClient() *http.Client {
 		},
 	}
 	return &http.Client{Transport: tr}
+}
+
+func CheckpointPod(client *http.Client, address string) (*http.Response, error) {
+	logger := log.Log
+	CheckpointStartTime := time.Now()
+	resp, err := client.Post(address, "application/json", strings.NewReader(""))
+	CheckpointEndTime := time.Now()
+	CheckpointDuration := CheckpointEndTime.Sub(CheckpointStartTime).Milliseconds()
+	logger.Info("Checkpoint Duration: ", "Duration", CheckpointDuration)
+	// err now is facing the problem that the status code is 401 unauthorized
+	if err != nil {
+		logger.Error(err, "unable to send the request")
+		return nil, err
+	}
+	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
+		logger.Error(err, "unable to checkpoint the container")
+		return nil, fmt.Errorf("unable to checkpoint the container")
+	}
+	// check the response status code
+	if resp.StatusCode != http.StatusOK {
+		logger.Error(err, "unable to checkpoint the container")
+		return nil, fmt.Errorf("unable to checkpoint the container")
+	}
+	return resp, nil
 }
