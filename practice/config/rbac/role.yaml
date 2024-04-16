@@ -7,6 +7,32 @@ rules:
 - apiGroups:
   - api.my.domain
   resources:
+  - daemonsets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - api.my.domain
+  resources:
+  - daemonsets/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - api.my.domain
+  resources:
+  - daemonsets/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - api.my.domain
+  resources:
   - migrations
   verbs:
   - create

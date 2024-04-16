@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: transformer
+  namespace: default
+spec:
+  containers:
+  - name: transformer 
+    image: 140.114.91.175/transformer:latest
+  nodeName: kubenode01

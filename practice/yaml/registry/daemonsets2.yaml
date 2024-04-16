@@ -43,7 +43,7 @@ spec:
   ports:
   - protocol: TCP
     port: 30010
-    targetPort: 5000
+    targetPort: 5001
     nodePort: 30010 # Specify the NodePort here
   selector:
     app: docker-registry

@@ -192,9 +192,10 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 
 				err = handlers.BuildahPodPushImage(pod.Spec.NodeName, "docker-registry", kubeletResponse.Items[0], registryIp)
 
-				// check the status of buildah pod already completed
-				// check the status of the deployment
-
+				if err != nil {
+					log.Log.Error(err, "unable to push image to registry")
+					return
+				}
 			}
 		}
 	}
