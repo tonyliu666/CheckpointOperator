@@ -25,6 +25,7 @@ spec:
           mountPath: /var/lib/registry
         env:
         - name: REGISTRY_HTTP_SECRET
+          # mypasswd
           value: myuser:$2y$05$SC5AAIwwjc54t4h4XQEFXey5a5xEkdH6sR7SiwzSTRqvVpa6R2HbW
 
       volumes:
@@ -38,12 +39,21 @@ apiVersion: v1
 kind: Service
 metadata:
   name: docker-registry-service
+  namespace: docker-registry
 spec:
+  # type: ClusterIP
+  # ports:
+  # - protocol: TCP
+  #   port: 30010
+  #   targetPort: 5000
+  #   # nodePort: 30010 # Specify the NodePort here
+  # selector:
+  #   app: docker-registry
   type: NodePort
   ports:
   - protocol: TCP
     port: 30010
-    targetPort: 5001
+    targetPort: 5000
     nodePort: 30010 # Specify the NodePort here
   selector:
     app: docker-registry

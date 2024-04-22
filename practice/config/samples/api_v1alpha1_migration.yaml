@@ -4,9 +4,11 @@ metadata:
   name: migration-sample
 spec:
   # TODO(user): Add fields here
-  podname: counter-app
+  # podname: counter-app
+  podname: dnsutils
   # deployment: counter
-  deployment: counter-app
+  # deployment: counter-app
+  deployment: 
   namespace: default
   destination: kubenode02
 

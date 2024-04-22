@@ -2,6 +2,7 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: dind-pod
+  namespace: docker-registry
 spec:
   containers:
   - name: dind-container
@@ -9,6 +10,6 @@ spec:
     securityContext:
       privileged: true
     # set insecure registry, "192.168.56.3:30010", "10.104.11.255:30010"
-    command: ["dockerd", "--insecure-registry", "192.168.56.3:30010", "--insecure-registry", "10.104.11.255:30010"]
+    command: ["dockerd", "--insecure-registry", "10.85.0.17:5000", "--insecure-registry", "10.85.0.30:5000"]
   restartPolicy: Never
   nodeName: kubenode01

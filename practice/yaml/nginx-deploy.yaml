@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: nginx-deployment
+  namespace: default
 spec:
   selector:
     matchLabels:
@@ -17,3 +18,6 @@ spec:
         image: docker.io/nginx:latest # Update the version of nginx from 1.14.2 to 1.16.1
         ports:
         - containerPort: 80
+
+  
+
