@@ -112,3 +112,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
+
+
+![structue](https://github.com/tonyliu666/CheckpointOperator/assets/48583047/726138ab-f8d7-4c06-8b16-63b539d77381)
