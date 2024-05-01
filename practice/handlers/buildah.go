@@ -6,6 +6,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"tony123.tw/util"
 )
 
@@ -43,9 +44,8 @@ func BuildahPodPushImage(nodeName string, nameSpace string, checkpoint string, r
 
 							Args: []string{
 								"-c",
-								"newcontainer=$(buildah from scratch); buildah add $newcontainer " + checkpoint + "; buildah config --annotation=io.kubernetes.cri-o.annotations.checkpoint.name=default-counter $newcontainer; buildah commit $newcontainer checkpoint-image:latest; buildah rm $newcontainer; buildah push --creds=myuser:mypasswd --tls-verify=false localhost/checkpoint-image:latest " + registryIp + ":5000/checkpoint-image:latest;",
-								// buildah push checkpoint-image to nodeIP:nodePort with username and password, username=myuser and password=mypasswd
-								// buildah push --creds=myuser:mypasswd --tls-verify=false localhost/checkpoint-image:latest 10.85.0.8:5000/checkpoint-image:latest
+								// "newcontainer=$(buildah from scratch); buildah add $newcontainer " + checkpoint + "; buildah config --annotation=io.kubernetes.cri-o.annotations.checkpoint.name=default-counter $newcontainer; buildah commit $newcontainer checkpoint-image:latest; buildah rm $newcontainer; buildah push --creds=myuser:mypasswd --tls-verify=false localhost/checkpoint-image:latest " + registryIp + ":5000/checkpoint-image:latest;",
+								"newcontainer=$(buildah from scratch); buildah add $newcontainer " + checkpoint + "; buildah commit $newcontainer " + checkpoint+ ":latest; buildah rm $newcontainer; buildah push --creds=myuser:mypasswd --tls-verify=false localhost/" +checkpoint +":latest " + registryIp + ":5000/checkpoint-image:latest;",
 							},
 
 							VolumeMounts: []corev1.VolumeMount{
@@ -77,4 +77,8 @@ func BuildahPodPushImage(nodeName string, nameSpace string, checkpoint string, r
 	}
 	_, err = clientset.AppsV1().Deployments(nameSpace).Create(context.TODO(), deployment, metav1.CreateOptions{})
 	return err
+}
+
+func DeleteBuildahDeployment(clientset *kubernetes.Clientset) error {
+	return clientset.AppsV1().Deployments("docker-registry").Delete(context.TODO(), "buildah-deployment", metav1.DeleteOptions{})
 }

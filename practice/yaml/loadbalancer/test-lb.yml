@@ -27,11 +27,11 @@ metadata:
     app: nginx
   name: nginx
 spec:
-  type: NodePort
+  type: ClusterIP
   ports:
   - port: 80
     targetPort: 80
-    nodePort: 30012
+    # nodePort: 30012
     protocol: TCP
   selector:
     app: nginx

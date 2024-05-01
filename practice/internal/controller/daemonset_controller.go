@@ -31,6 +31,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	log "sigs.k8s.io/controller-runtime/pkg/log"
+	"tony123.tw/handlers"
 	"tony123.tw/util"
 )
 
@@ -39,9 +40,6 @@ type DaemonSetReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
-
-// delare the logger without initializing it
-var logger logr.Logger
 
 //+kubebuilder:rbac:groups=api.my.domain,resources=daemonsets,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=api.my.domain,resources=daemonsets/status,verbs=get;update;patch
@@ -57,58 +55,69 @@ var logger logr.Logger
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.0/pkg/reconcile
 func (r *DaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-
-	logger = log.FromContext(ctx)
+	l := log.FromContext(ctx)
 	// TODO(user): your logic here
-	// detect the docker registry daemonset has received the new image at the timestamp
-
 	// get the pods from namespace docker-registry
 	pods := &corev1.PodList{}
 	if err := r.List(ctx, pods, client.InNamespace("docker-registry")); err != nil {
-		logger.Error(err, "unable to list pods")
+		l.Error(err, "unable to list pods")
 		return ctrl.Result{}, err
 	}
+	msg := handlers.ConsumeMessage()
+	l.Info("Message", "message", msg)
+	checkPointFileName := string(msg.Value)
+
+
 
 	// get the pods whose prefix name is docker-registry
 	for _, pod := range pods.Items {
-		logger.Info("Pod name", "name", pod.Name)
+		l.Info("Pod name", "name", pod.Name)
 		// if pod.Name includes docker-registry
 		if strings.Contains(pod.Name, "docker-registry") {
-			// get the pod ip
 			podIP := pod.Status.PodIP
 			// curl -X GET <user>:<pass> https://podIP:5000/v2/_catalog
 
-			// create nginx pods
-			nginx_pod := &corev1.Pod{
+			// create busybox pods with command sleep infinity
+			skopeoPod := &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "nginx-pod",
+					Name:      "skopeo",
 					Namespace: "docker-registry",
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:  "nginx",
-							Image: "nginx",
+							Name:  "skopeo",
+							Image: "quay.io/skopeo/stable:latest",
+							// execute skopeo inspect --tls-verify=false docker://{podIP:5000}/checkpoint-image:latest
+							Command: []string{
+								"skopeo",
+								"inspect",
+								"--tls-verify=false",
+								"docker://" + podIP + ":5000/" +checkPointFileName+":latest",
+							},
 						},
 					},
 				},
 			}
+			// create the pod
+			if err := r.Create(ctx, skopeoPod); err != nil {
+				l.Error(err, "unable to create pod")
+				return ctrl.Result{}, err
+			}
+			log.Log.Info("Pod created", "name", skopeoPod.Name)
 			// ssh into that pod
 			// kubectl exec -it nginx-pod -- /bin/bash
-			ssh_into_pod(nginx_pod.Name, podIP, "docker-registry")
-
-			// create the request with like this curl command:
-			// manifest=$(curl -H "Accept: application/vnd.oci.image.manifest.v1+json" http://{podIP}:5000/v2/{image-name}/manifests/latest)
+			// ssh_into_pod(l, nginxPod.Name, podIP, "docker-registry")
 
 		}
 
 	}
 	return ctrl.Result{}, nil
 }
-func ssh_into_pod(podName string, podIP string, namespace string) {
+func ssh_into_pod(l logr.Logger, podName string, podIP string, namespace string) {
 	clientset, err := util.CreateClientSet()
 	if err != nil {
-		logger.Error(err, "unable to create clientset")
+		l.Error(err, "unable to create clientset")
 		return
 	}
 
@@ -116,11 +125,10 @@ func ssh_into_pod(podName string, podIP string, namespace string) {
 	//curl -H "Accept: application/vnd.oci.image.manifest.v1+json" http://{podIP}:5000/v2/{image-name}/manifests/latest)
 	command := []string{"/bin/bash",
 		"-c",
-		"configDigest=$(curl -H \"Accept: application/vnd.oci.image.manifest.v1+json\" http://" + podIP + ":5000/v2/checkpoint-image/manifests/latest | jq -r '.config.digest')",
+		"manifest=$(curl -H \"Accept: application/vnd.oci.image.manifest.v1+json\" http://" + podIP + ":5000/v2/checkpoint-image/manifests/latest" +
+			" | jq -r '.config.digest'); ",
 		"-c",
-		"configBlob=(curl http://", podIP, ":5000/v2/checkpoint-image/blobs/$configDigest)",
-		"-c",
-		"echo $configBlob",
+		"configBlob=$(http://" + podIP + ":5000/v2/checkpoint-image/blobs/$manifest\" | jq '.created')",
 	}
 	req := clientset.CoreV1().RESTClient().Post().
 		Resource("pods").
@@ -137,13 +145,13 @@ func ssh_into_pod(podName string, podIP string, namespace string) {
 	kubeconfig := os.Getenv("HOME") + "/.kube/config"
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
-		logger.Error(err, "unable to get the config")
+		l.Error(err, "unable to get the config")
 		return
 	}
-	
+
 	exec, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
 	if err != nil {
-		logger.Error(err, "unable to create the executor")
+		l.Error(err, "unable to create the executor")
 		return
 	}
 	err = exec.Stream(remotecommand.StreamOptions{
@@ -153,7 +161,7 @@ func ssh_into_pod(podName string, podIP string, namespace string) {
 		Tty:    true,
 	})
 	if err != nil {
-		logger.Error(err, "unable to stream")
+		l.Error(err, "unable to stream")
 		return
 	}
 }

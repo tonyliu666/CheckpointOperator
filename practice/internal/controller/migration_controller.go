@@ -191,9 +191,20 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 				}
 
 				err = handlers.BuildahPodPushImage(pod.Spec.NodeName, "docker-registry", kubeletResponse.Items[0], registryIp)
+				// create an event sent to kafka broker
+				// TODO: sent messages to kafka broker(kubeletResponse.Items[0],and what timestamp)
+				// handlers.ProduceMessage(kubeletResponse.Items[0], pod.Spec.NodeName)
+				
+
 
 				if err != nil {
 					log.Log.Error(err, "unable to push image to registry")
+					return
+				}
+				// delete this buildah deployment, not yet test for this function
+				err = handlers.DeleteBuildahDeployment(clientset)
+				if err != nil {
+					log.Log.Error(err, "unable to delete the buildah deployment")
 					return
 				}
 			}

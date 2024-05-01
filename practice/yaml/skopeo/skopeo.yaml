@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: skopeo-pod
+  namespace: docker-registry
+spec:
+  containers:
+  - name: skopeo-container
+    image: quay.io/skopeo/stable:latest
+    command:
+      - /bin/sh
+    args:
+      - -c
+      - sleep infinity
+    

@@ -1,0 +1,13 @@
+# deploy the image from test-kafka as a pod 
+apiVersion: v1
+kind: Pod 
+metadata:
+  name: consumer
+  labels:
+    app: kafka
+spec:
+  containers:
+  - name: consumer
+    image: tonyliu666/kafka-client:latest
+    ports:
+    - containerPort: 9092
