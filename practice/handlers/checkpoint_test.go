@@ -4,15 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"math/rand"
+	"testing"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	cli "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
-	"testing"
 )
 
-type kubeletCheckpointResponse struct {
+type KubeletCheckpointResponse struct {
 	Items []string `json:"items"`
 }
 type MigrationReconciler struct {
@@ -33,39 +35,57 @@ func TestGetKubeletClient(t *testing.T) {
 func TestCheckpointPod(t *testing.T) {
 	// get the pod address for counter pod
 	namespace := "default"
+	kubeletResponse := &KubeletCheckpointResponse{}
+	err := kubeletResponse.RandomCheckpointPod(namespace)
+	if err != nil {
+		t.Error("Error unmarshalling kubelet response")
+	}
+}
 
+// the utility for test
+func (k *KubeletCheckpointResponse) RandomCheckpointPod(namespace string) error {
 	cfg, err := config.GetConfig()
 	if err != nil {
-		t.Error(err)
-		return
+		return err
 	}
 
 	// Create a new Kubernetes client using the configuration
 	client, err := client.New(cfg, client.Options{})
 	if err != nil {
-		t.Error("unable to create the client")
-		return
+		return err
 	}
 
 	pods := &corev1.PodList{}
 	if err := client.List(context.Background(), pods, cli.InNamespace(namespace)); err != nil {
-		t.Error("unable to list the pods")
+		return err
 	}
 	// get the nodeIP of the pod
-	nodeIP := pods.Items[0].Status.HostIP
-	address := "https://" + nodeIP + ":10250/checkpoint/" + namespace + "/" + pods.Items[0].Name + "/counter"
+	random := rand.Intn(len(pods.Items))
+	nodeIP := pods.Items[random].Status.HostIP
+	// get the container name of the pod
+	containerName := pods.Items[random].Spec.Containers[0].Name
+	address := "https://" + nodeIP + ":10250/checkpoint/" + namespace + "/" + pods.Items[random].Name + "/" + containerName
 
 	httpClient := GetKubeletClient()
 	resp, err := CheckpointPod(httpClient, address)
+	if err != nil {
+		return err
+	}
+
+	if err != nil {
+		return err
+	}
 
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		t.Error("error while reading body: ", "error", err)
+		return err
 	}
-	kubeletResponse := &kubeletCheckpointResponse{}
-	err = json.Unmarshal(body, kubeletResponse)
+
+	err = json.Unmarshal(body, k)
 	if err != nil {
-		t.Error("Error unmarshalling kubelet response")
+		return err
 	}
+	return nil
+
 }

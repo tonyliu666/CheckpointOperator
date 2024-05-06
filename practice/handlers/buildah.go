@@ -12,6 +12,7 @@ import (
 
 func BuildahPodPushImage(nodeName string, nameSpace string, checkpoint string, registryIp string) error {
 	num := int32(1)
+	podName := util.ModifyCheckpointToImageName(checkpoint)
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "buildah-deployment",
@@ -45,7 +46,7 @@ func BuildahPodPushImage(nodeName string, nameSpace string, checkpoint string, r
 							Args: []string{
 								"-c",
 								// "newcontainer=$(buildah from scratch); buildah add $newcontainer " + checkpoint + "; buildah config --annotation=io.kubernetes.cri-o.annotations.checkpoint.name=default-counter $newcontainer; buildah commit $newcontainer checkpoint-image:latest; buildah rm $newcontainer; buildah push --creds=myuser:mypasswd --tls-verify=false localhost/checkpoint-image:latest " + registryIp + ":5000/checkpoint-image:latest;",
-								"newcontainer=$(buildah from scratch); buildah add $newcontainer " + checkpoint + "; buildah commit $newcontainer " + checkpoint + ":latest; buildah rm $newcontainer; buildah push --creds=myuser:mypasswd --tls-verify=false localhost/" + checkpoint + ":latest " + registryIp + ":5000/checkpoint-image:latest;",
+								"newcontainer=$(buildah from scratch); buildah add $newcontainer " + checkpoint + " /" + "; buildah commit $newcontainer " + podName + ":latest; buildah rm $newcontainer; buildah push --creds=myuser:mypasswd --tls-verify=false localhost/" + podName + ":latest " + registryIp + ":5000/" + podName + ":latest;",
 							},
 
 							VolumeMounts: []corev1.VolumeMount{

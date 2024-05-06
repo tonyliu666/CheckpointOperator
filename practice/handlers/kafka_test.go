@@ -26,7 +26,7 @@ func TestProduceMessage(t *testing.T) {
 	}
 	defer rsp.Body.Close()
 	body, err := io.ReadAll(rsp.Body)
-	kubeletResponse := &kubeletCheckpointResponse{}
+	kubeletResponse := &KubeletCheckpointResponse{}
 	err = json.Unmarshal(body, kubeletResponse)
 	if err != nil {
 		log.Log.Error(err, "Error unmarshalling kubelet response")
