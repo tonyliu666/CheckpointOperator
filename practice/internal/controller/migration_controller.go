@@ -34,7 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	apiv1alpha1 "tony123.tw/api/v1alpha1"
 	"tony123.tw/handlers"
-	handler "tony123.tw/handlers"
+
 	"tony123.tw/util"
 )
 
@@ -152,9 +152,9 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 					container.Name,
 				)
 				log.Log.Info("checkpoint kubelet", "address", address)
-				client := handler.GetKubeletClient()
+				client := handlers.GetKubeletClient()
 
-				resp, err := handler.CheckpointPod(client, address)
+				resp, err := handlers.CheckpointPod(client, address)
 				if err != nil {
 					log.Log.Error(err, "unable to checkpoint the pod")
 					return
@@ -176,30 +176,34 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 				}
 				log.Log.Info("got response", "response", kubeletResponse, "body", string(body))
 
-				clientset,err := util.CreateClientSet()
+				clientset, err := util.CreateClientSet()
 
 				if err != nil {
 					log.Log.Error(err, "unable to create clientset")
 					return
 				}
-					
+
 				// find the pod ip of registry pod
-				registryIp,err := handlers.ReturnRegistryIP(clientset, pod.Spec.NodeName)
+				registryIp, err := handlers.ReturnRegistryIP(clientset, pod.Spec.NodeName)
 				if err != nil {
 					log.Log.Error(err, "unable to get the registry ip")
 					return
 				}
 
+				// buildah deployment deployed on the node which is same as the node of the pod
 				err = handlers.BuildahPodPushImage(pod.Spec.NodeName, "docker-registry", kubeletResponse.Items[0], registryIp)
-				// create an event sent to kafka broker
-				// TODO: sent messages to kafka broker(kubeletResponse.Items[0],and what timestamp)
-				// handlers.ProduceMessage(kubeletResponse.Items[0], pod.Spec.NodeName)
-				
-
 
 				if err != nil {
 					log.Log.Error(err, "unable to push image to registry")
 					return
+				}
+				// create an event sent to kafka broker
+				// TODO: sent messages to kafka broker(kubeletResponse.Items[0],and what timestamp)
+				// handlers.ProduceMessage(kubeletResponse.Items[0], pod.Spec.NodeName)
+
+				err = handlers.ProduceMessage(pod.Spec.NodeName, kubeletResponse.Items[0])
+				if err != nil {
+					log.Log.Error(err, "unable to produce message to kafka broker")
 				}
 				// delete this buildah deployment, not yet test for this function
 				err = handlers.DeleteBuildahDeployment(clientset)
@@ -211,8 +215,6 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 		}
 	}
 }
-
-
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *MigrationReconciler) SetupWithManager(mgr ctrl.Manager) error {

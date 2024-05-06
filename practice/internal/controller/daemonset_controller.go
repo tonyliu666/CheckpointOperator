@@ -18,8 +18,12 @@ package controller
 
 import (
 	"context"
+	"sync"
+	//"io"
+	//"net/http"
 	"os"
-	"strings"
+	//"strings"
+	//"sync"
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -31,6 +35,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	log "sigs.k8s.io/controller-runtime/pkg/log"
+
+	//"tony123.tw/handlers"
 	"tony123.tw/handlers"
 	"tony123.tw/util"
 )
@@ -54,66 +60,29 @@ type DaemonSetReconciler struct {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.0/pkg/reconcile
+
 func (r *DaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	l := log.FromContext(ctx)
 	// TODO(user): your logic here
 	// get the pods from namespace docker-registry
 	pods := &corev1.PodList{}
-	if err := r.List(ctx, pods, client.InNamespace("docker-registry")); err != nil {
-		l.Error(err, "unable to list pods")
+
+	// get the pods whose label is app: docker-registry
+	if err := r.List(ctx, pods, client.InNamespace("docker-registry"), client.MatchingLabels{"app": "docker-registry"}); err != nil {
+		l.Error(err, "unable to list the pods")
 		return ctrl.Result{}, err
 	}
-	msg := handlers.ConsumeMessage()
-	l.Info("Message", "message", msg)
-	checkPointFileName := string(msg.Value)
-
-
-
-	// get the pods whose prefix name is docker-registry
+	// depend on how many docker registry pods, create how many go routines
+	var wg sync.WaitGroup
 	for _, pod := range pods.Items {
-		l.Info("Pod name", "name", pod.Name)
-		// if pod.Name includes docker-registry
-		if strings.Contains(pod.Name, "docker-registry") {
-			podIP := pod.Status.PodIP
-			// curl -X GET <user>:<pass> https://podIP:5000/v2/_catalog
-
-			// create busybox pods with command sleep infinity
-			skopeoPod := &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "skopeo",
-					Namespace: "docker-registry",
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "skopeo",
-							Image: "quay.io/skopeo/stable:latest",
-							// execute skopeo inspect --tls-verify=false docker://{podIP:5000}/checkpoint-image:latest
-							Command: []string{
-								"skopeo",
-								"inspect",
-								"--tls-verify=false",
-								"docker://" + podIP + ":5000/" +checkPointFileName+":latest",
-							},
-						},
-					},
-				},
-			}
-			// create the pod
-			if err := r.Create(ctx, skopeoPod); err != nil {
-				l.Error(err, "unable to create pod")
-				return ctrl.Result{}, err
-			}
-			log.Log.Info("Pod created", "name", skopeoPod.Name)
-			// ssh into that pod
-			// kubectl exec -it nginx-pod -- /bin/bash
-			// ssh_into_pod(l, nginxPod.Name, podIP, "docker-registry")
-
-		}
-
+		wg.Add(1)
+		go handlers.DeployPodOnNewNode(&pod, &wg) // Pass the address of wg to the function
 	}
+
 	return ctrl.Result{}, nil
 }
+
+// currently this function is useless now
 func ssh_into_pod(l logr.Logger, podName string, podIP string, namespace string) {
 	clientset, err := util.CreateClientSet()
 	if err != nil {
