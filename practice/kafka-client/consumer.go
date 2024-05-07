@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
+	//"os"
 
 	"github.com/segmentio/kafka-go"
 )
@@ -12,13 +12,16 @@ import (
 func main() {
     // Specify the bootstrap servers, topic, and consumer group ID
     // bootstrapServers := "my-cluster-kafka-bootstrap:9092"
-    bootstrapServers := "my-cluster-kafka-bootstrap:9092"
+    // bootstrapServers := "my-cluster-kafka-bootstrap:9092"
+    bootstrapServers := "192.168.56.3:32195"
     
     topic := "my-topic"
     groupID := "my-group"
 
-    kafkaKey := os.Getenv("kafka-key")
-    kafkaValue := os.Getenv("kafka-value")
+    // kafkaKey := os.Getenv("kafka-key")
+    // kafkaValue := os.Getenv("kafka-value")
+    kafkaKey := "key1"
+    kafkaValue := "value1"
 
     // Create a Kafka consumer (reader)
     reader := kafka.NewReader(kafka.ReaderConfig{

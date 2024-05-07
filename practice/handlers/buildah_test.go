@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"testing"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -17,10 +18,8 @@ import (
 	"tony123.tw/util"
 )
 
-
 func TestBuildahPodPushImage(t *testing.T) {
 	// integration test for buildah getting kubelet client, creating a image for checkpointed pod and push to registry
-
 	kubeletResponse := &KubeletCheckpointResponse{}
 	// make a checkpoint for the pod on default namespace
 	err := kubeletResponse.RandomCheckpointPod("default")
@@ -70,18 +69,12 @@ func TestBuildahPodPushImage(t *testing.T) {
 		t.Error("unable to get the registry ip")
 	}
 
+	// sometimes, the buildah can push with the error like this: Error: adding content to container "working-container": checking on sources under "/": copier: stat: "/var/lib/kubelet/checkpoints/checkpoint-nginx-7645c5b447-ln5cd_default-nginx-2024-05-07T17:18:07Z.tar": no such file or directory
 	err = BuildahPodPushImage(nodeName, namespace, kubeletResponse.Items[0], registryIp)
 
 	if err != nil {
 		t.Error("unable to push image to registry")
 	}
-
-	// check the image has been pushed to registry on kubenode02
-
-	// TODO: check the image alreay existed in the registry, and the image name is checkpoint-image:latest
-
-	// check the image whose name is checkpoint-image has been pushed to registry on kubenode02
-	// get the docker registry pod on kubenode02
 
 	registryPodList, err := clientset.CoreV1().Pods("docker-registry").List(context.TODO(), metav1.ListOptions{
 		LabelSelector: "app=docker-registry",
@@ -134,4 +127,22 @@ func TestBuildahPodPushImage(t *testing.T) {
 		Tty:    true,
 	})
 
+	// TODO: check the status of the buildah pod is completed than delete the buildah pod
+	// get the buildah pod
+	now := time.Now()
+	for {
+		// check every 5 seconds if the buildah pod is completed
+		time.Sleep(5 * time.Second)
+		buildahPodList,_ := clientset.CoreV1().Pods("docker-registry").List(context.TODO(), metav1.ListOptions{
+			LabelSelector: "app=buildah",
+		})
+		if len(buildahPodList.Items) == 0 {
+			break
+		}
+
+		if time.Since(now) > 30 * time.Second{
+			t.Error("timeout")
+			break
+		}
+	}
 }

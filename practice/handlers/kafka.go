@@ -6,12 +6,14 @@ import (
 	"time"
 
 	"github.com/segmentio/kafka-go"
+	"tony123.tw/util"
 )
 
 func ConsumeMessage(nodeName string) ([]kafka.Message, error) {
 	// get the message from kafka broker
 	// hard-coded only process ten messages at a time
-	bootstrapServers := "my-cluster-kafka-bootstrap:9092"
+	// bootstrapServers := "my-cluster-kafka-bootstrap:9092"
+	bootstrapServers := "192.168.56.3:32195"
 	topic := "my-topic"
 	groupID := "my-group"
 
@@ -46,10 +48,10 @@ func ConsumeMessage(nodeName string) ([]kafka.Message, error) {
 
 }
 func ProduceMessage(key string, value string) error {
-	bootstrapServers := "my-cluster-kafka-bootstrap:9092"
-	//bootstrapServers := "localhost:9092"
-	// bootstrapServers := "minikube-kafka-testing.io:30571"
+	// bootstrapServers := "my-cluster-kafka-bootstrap:9092"
+	bootstrapServers := "192.168.56.3:32195"
 	topic := "my-topic"
+	value = util.ModifyCheckpointToImageName(value)
 
 	// Create a Kafka producer
 	writer := kafka.Writer{

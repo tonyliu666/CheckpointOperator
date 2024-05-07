@@ -5,7 +5,7 @@ import (
 )
 
 func ModifyCheckpointToImageName(checkpoint string) string {
-	filePath := "/var/lib/kubelet/checkpoints/checkpoint-nginx-deployment-85bfd45d84-v4mlg_default-nginx-2024-05-06T13:38:10Z.tar"
+	filePath := checkpoint
 
 	// Step 1: Remove the prefix "/var/lib/kubelet/checkpoints/"
 	prefix := "/var/lib/kubelet/checkpoints/"

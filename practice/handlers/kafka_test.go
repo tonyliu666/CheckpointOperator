@@ -2,15 +2,10 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-
+	"log"
 	"testing"
-
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	"github.com/segmentio/kafka-go"
 	"tony123.tw/util"
 )
 
@@ -18,121 +13,84 @@ import (
 // now before running this test, I should run port-forward the service, svc/my-cluster-kafka-bootstrap
 // kubectl port-forward svc/my-cluster-kafka-bootstrap 9092:9092
 func TestProduceMessage(t *testing.T) {
-	client := GetKubeletClient()
-	address := fmt.Sprintf("https://192.168.56.3:10250/checkpoint/default/counter-app-76f6c8d44f-tlt7m/counter")
-	rsp, err := CheckpointPod(client, address)
+	checkpointResponse := &KubeletCheckpointResponse{}
+	err := checkpointResponse.RandomCheckpointPod("default")
 	if err != nil {
-		t.Error("unable to checkpoint the pod")
+		t.Error("Error unmarshalling kubelet response")
 	}
-	defer rsp.Body.Close()
-	body, err := io.ReadAll(rsp.Body)
-	kubeletResponse := &KubeletCheckpointResponse{}
-	err = json.Unmarshal(body, kubeletResponse)
+	err = produceMessage("kubenode02", checkpointResponse.Items[0])
 	if err != nil {
-		log.Log.Error(err, "Error unmarshalling kubelet response")
+		t.Error("Error producing kafka message")
 	}
-	producerPod := produceMessage("kafka", "tonyliu666/kafka:latest", "kubenode02", kubeletResponse.Items[0])
-	// run the pod
-	clientset, err := util.CreateClientSet()
-	if err != nil {
-		t.Error("unable to create clientset")
-	}
-	_, err = clientset.CoreV1().Pods("kafka").Create(context.TODO(), producerPod, metav1.CreateOptions{})
-
 	// examine whether the message has been produced
-	consumerPod := consumeMessage("kafka", "tonyliu666/kafka-client:latest", "kubenode02", kubeletResponse.Items[0])
-
-	// run the pod
-	_, err = clientset.CoreV1().Pods("kafka").Create(context.TODO(), consumerPod, metav1.CreateOptions{})
-
+	err = consumeMessage("kubenode02", checkpointResponse.Items[0])
 	if err != nil {
-		t.Error("unable to create the consumer pod")
-	}
-
-	// check the stdout of the pod existing
-	// use like kubectl log kafka-client -n kafka
-	// Define the log options
-	logOptions := &corev1.PodLogOptions{
-		Container: "kafka-client",
-		Follow:    true,
-	}
-
-	// Fetch the logs for the specified pod and namespace
-	req := clientset.CoreV1().Pods("kafka").GetLogs(consumerPod.Name, logOptions)
-	stream, err := req.Stream(context.Background())
-	if err != nil {
-		panic(err.Error())
-	}
-	defer stream.Close()
-
-	// examine the logs existed
-	buf := make([]byte, 1000)
-	for {
-		n, err := stream.Read(buf)
-		if err != nil {
-			t.Error("unable to read the logs")
-		}
-		// successfully run this test
-		if n > 0 {
-			break
-		}
+		t.Error("Error consuming kafka message")
 	}
 }
-func consumeMessage(namespace string, imageName string, key string, value string) *corev1.Pod {
+func consumeMessage(key string, value string) error {
 	// set the message whose key is "kubenode02" and value is kubeletResponse.Items[0] as an environment variable
 	// consume the message from the kafka broker
-	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "kafka-client",
-			Namespace: namespace,
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name:  "kafka-client",
-					Image: imageName,
-					Env: []corev1.EnvVar{
-						{
-							Name:  "kafka-key",
-							Value: key,
-						},
-						{
-							Name:  "kafka-value",
-							Value: value,
-						},
-					},
-				},
-			},
-		},
-	}
-	return pod
+	value = util.ModifyCheckpointToImageName(value)
+	
+	bootstrapServers := "192.168.56.3:32195"
+    
+    topic := "my-topic"
+    groupID := "my-group"
+    // Create a Kafka consumer (reader)
+    reader := kafka.NewReader(kafka.ReaderConfig{
+        Brokers:   []string{bootstrapServers},
+        Topic:     topic,
+        GroupID:   groupID,
+        // Partition: 0, // Optional: specify a partition if needed
+    })
+
+    defer reader.Close()
+
+    // Consume messages from the topic
+    for {
+        msg, err := reader.FetchMessage(context.Background())
+        if err != nil {
+            return err
+        }
+        if string(msg.Key) == key && string(msg.Value) == value {
+            // Commit the offset to acknowledge the message has been processed
+            if err := reader.CommitMessages(context.Background(), msg); err != nil {
+                log.Fatalf("Failed to commit message: %v", err)
+            }
+            return nil
+        }
+    }
 }
 
-func produceMessage(nameSpace string, imageName string, key string, value string) *corev1.Pod {
+func produceMessage(key string, value string) error {
 	//set the message whose key is "kubenode02" and value is kubeletResponse.Items[0] as an environment variable
-	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "kafka",
-			Namespace: nameSpace,
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name:  "kafka",
-					Image: imageName,
-					Env: []corev1.EnvVar{
-						{
-							Name:  "kafka-key",
-							Value: key,
-						},
-						{
-							Name:  "kafka-value",
-							Value: value,
-						},
-					},
-				},
-			},
-		},
+	value = util.ModifyCheckpointToImageName(value)
+	bootstrapServers := "192.168.56.3:32195"
+
+	topic := "my-topic"
+	writer := kafka.Writer{
+		Addr:     kafka.TCP(bootstrapServers),
+		Topic:    topic,
+		Balancer: &kafka.LeastBytes{},	
 	}
-	return pod
+	message := kafka.Message{
+		// Key:   []byte(key), // Optional: specify a key for the message
+		// Value: []byte(value),
+		Key:  []byte(key), // Optional: specify a key for the message
+		Value: []byte(value),
+	}
+	// Send the message
+	err := writer.WriteMessages(context.Background(), message)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Message sent successfully.")
+
+	// Close the producer
+	if err := writer.Close(); err != nil {
+		return err
+	}
+	return nil
 }

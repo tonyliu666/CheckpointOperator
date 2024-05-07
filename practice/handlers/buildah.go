@@ -3,7 +3,7 @@ package handlers
 import (
 	"context"
 
-	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -11,44 +11,35 @@ import (
 )
 
 func BuildahPodPushImage(nodeName string, nameSpace string, checkpoint string, registryIp string) error {
-	num := int32(1)
 	podName := util.ModifyCheckpointToImageName(checkpoint)
-	deployment := &appsv1.Deployment{
+	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "buildah-deployment",
+			Name: "buildah-job",
 			// set the same namespace as the pod
 		},
-		Spec: appsv1.DeploymentSpec{
-			Replicas: &num,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app": "buildah",
-				},
-			},
+		// set ttlSecondsAfterFinished to 30 seconds
+		Spec: batchv1.JobSpec{
+			TTLSecondsAfterFinished: func() *int32 { i := int32(20); return &i }(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						"app": "buildah",
 					},
 				},
-				// specify the pod should be created on the node where the pod is running
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							// privileged container
 							Name:  "buildah",
 							Image: "quay.io/buildah/stable",
 							SecurityContext: &corev1.SecurityContext{
 								Privileged: func() *bool { b := true; return &b }(),
 							},
 							Command: []string{"/bin/bash"},
-
+							// builah add the file under checkpointed-image to the new container
 							Args: []string{
 								"-c",
-								// "newcontainer=$(buildah from scratch); buildah add $newcontainer " + checkpoint + "; buildah config --annotation=io.kubernetes.cri-o.annotations.checkpoint.name=default-counter $newcontainer; buildah commit $newcontainer checkpoint-image:latest; buildah rm $newcontainer; buildah push --creds=myuser:mypasswd --tls-verify=false localhost/checkpoint-image:latest " + registryIp + ":5000/checkpoint-image:latest;",
-								"newcontainer=$(buildah from scratch); buildah add $newcontainer " + checkpoint + " /" + "; buildah commit $newcontainer " + podName + ":latest; buildah rm $newcontainer; buildah push --creds=myuser:mypasswd --tls-verify=false localhost/" + podName + ":latest " + registryIp + ":5000/" + podName + ":latest;",
+								"newcontainer=$(buildah from scratch); buildah add $newcontainer " + checkpoint + "  /" + "; buildah commit $newcontainer " + podName + ":latest; buildah rm $newcontainer; buildah push --creds=myuser:mypasswd --tls-verify=false localhost/" + podName + ":latest " + registryIp + ":5000/" + podName + ":latest;",
 							},
-
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "checkpointed-image",
@@ -67,16 +58,19 @@ func BuildahPodPushImage(nodeName string, nameSpace string, checkpoint string, r
 							},
 						},
 					},
-					NodeName: nodeName,
+					NodeName:      nodeName,
+					RestartPolicy: corev1.RestartPolicyNever, // Ensure the job doesn't restart
 				},
 			},
 		},
 	}
+
 	clientset, err := util.CreateClientSet()
 	if err != nil {
 		return err
 	}
-	_, err = clientset.AppsV1().Deployments(nameSpace).Create(context.TODO(), deployment, metav1.CreateOptions{})
+	// _, err = clientset.AppsV1().Deployments(nameSpace).Create(context.TODO(), deployment, metav1.CreateOptions{})
+	_, err = clientset.BatchV1().Jobs(nameSpace).Create(context.TODO(), job, metav1.CreateOptions{})
 	return err
 }
 

@@ -27,3 +27,5 @@ go.work
 *.swo
 *~
 ssh_key/*
+yaml/kafka/cert
+yaml/kafka/cert-config
