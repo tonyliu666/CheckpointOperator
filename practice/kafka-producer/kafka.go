@@ -17,7 +17,6 @@ func main() {
 	// bootstrapServers := "my-cluster-kafka-bootstrap:9092"
 	// bootstrapServers := "bootstrap.my-kafka.example.com:31192"
 	bootstrapServers := "192.168.56.3:32195"
-	// bootstrapServers := "localhost:9092"
 	topic := "my-topic"
 	// filePath := "/home/Tony/MyOperstorProjects/practice/yaml/kafka/ca.crt"
 	// tlsConfig := createConfigFromCA(filePath)

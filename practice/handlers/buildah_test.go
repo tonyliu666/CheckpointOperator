@@ -133,14 +133,14 @@ func TestBuildahPodPushImage(t *testing.T) {
 	for {
 		// check every 5 seconds if the buildah pod is completed
 		time.Sleep(5 * time.Second)
-		buildahPodList,_ := clientset.CoreV1().Pods("docker-registry").List(context.TODO(), metav1.ListOptions{
+		buildahPodList, _ := clientset.CoreV1().Pods("docker-registry").List(context.TODO(), metav1.ListOptions{
 			LabelSelector: "app=buildah",
 		})
 		if len(buildahPodList.Items) == 0 {
 			break
 		}
 
-		if time.Since(now) > 30 * time.Second{
+		if time.Since(now) > 30*time.Second {
 			t.Error("timeout")
 			break
 		}

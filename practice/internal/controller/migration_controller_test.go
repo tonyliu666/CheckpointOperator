@@ -1,29 +1,14 @@
-/*
-Copyright 2024.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package controller
 
 import (
 	"context"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	log "sigs.k8s.io/controller-runtime/pkg/log"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -31,54 +16,62 @@ import (
 )
 
 var _ = Describe("Migration Controller", func() {
+	const (
+		resourceName = "test-migration"
+		podName      = "dnsutils"
+		deployment   = ""
+		namespace    = "default"
+		destination  = "kubdnode02"
+		timeout      = time.Second * 30
+		interval     = time.Second * 1
+	)
+
 	Context("When reconciling a resource", func() {
-		const resourceName = "test-resource"
-
-		ctx := context.Background()
-
-		typeNamespacedName := types.NamespacedName{
-			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
-		}
-		migration := &apiv1alpha1.Migration{}
-
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind Migration")
-			err := k8sClient.Get(ctx, typeNamespacedName, migration)
+
+			err := k8sClient.Get(ctx, types.NamespacedName{Name: resourceName, Namespace: "default"}, &apiv1alpha1.Migration{})
 			if err != nil && errors.IsNotFound(err) {
-				resource := &apiv1alpha1.Migration{
+				ctx := context.Background()
+				migration := &apiv1alpha1.Migration{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
 					},
-					// TODO(user): Specify other spec details if needed.
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "api.my.domain/v1alpha1",
+						Kind:       "Migration",
+					},
+					Spec: apiv1alpha1.MigrationSpec{
+						Podname:     podName,
+						Deployment:  deployment,
+						Namespace:   namespace,
+						Destination: destination,
+					},
 				}
-				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+				log.Log.Info("Creating a new Migration", "Migration.Namespace", migration.Namespace, "Migration.Name", migration.Name)
+				Expect(k8sClient.Create(ctx, migration)).Should(Succeed())
 			}
 		})
 
-		AfterEach(func() {
-			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &apiv1alpha1.Migration{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("Cleanup the specific resource instance Migration")
-			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
-		})
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
-			controllerReconciler := &MigrationReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
-			}
 
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
-			// Example: If you expect a certain status condition after reconciliation, verify it here.
+			migrationLookupKey := types.NamespacedName{Name: resourceName, Namespace: "default"}
+			migration := &apiv1alpha1.Migration{}
+
+			// We'll need to retry getting this newly created CronJob, given that creation may not immediately happen.
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, migrationLookupKey, migration)
+				return err == nil
+			}, timeout, interval).Should(BeTrue())
+
+			Expect(migration.Spec.Podname).Should(Equal(podName))
+			Expect(migration.Spec.Deployment).Should(Equal(deployment))
+			Expect(migration.Spec.Namespace).Should(Equal(namespace))
+			Expect(migration.Spec.Destination).Should(Equal(destination))
+
+			log.Log.Info("Migration created successfully", "Migration.Namespace", migration.Namespace, "Migration.Name", migration.Name)
 		})
 	})
 })

@@ -26,7 +26,6 @@ func ConsumeMessage(nodeName string) ([]kafka.Message, error) {
 
 	defer reader.Close()
 	// Consume messages from the topic
-	// set the timeout for 10 seconds
 	now := time.Now()
 	messageList := []kafka.Message{}
 	for {

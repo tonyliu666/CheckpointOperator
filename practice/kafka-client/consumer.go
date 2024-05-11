@@ -39,12 +39,14 @@ func main() {
         if err != nil {
             log.Fatalf("Failed to fetch message: %v", err)
         }
+        fmt.Println(msg)
         if string(msg.Key) == kafkaKey && string(msg.Value) == kafkaValue {
             // Commit the offset to acknowledge the message has been processed
             if err := reader.CommitMessages(context.Background(), msg); err != nil {
                 log.Fatalf("Failed to commit message: %v", err)
             }
             fmt.Printf("Message: %v\n", string(msg.Value))
+            break
         }
     }
 }
