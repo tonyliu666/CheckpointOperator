@@ -2,12 +2,13 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"tony123.tw/util"
+	util "tony123.tw/util"
 )
 
 func BuildahPodPushImage(nodeName string, nameSpace string, checkpoint string, registryIp string) error {
@@ -74,6 +75,80 @@ func BuildahPodPushImage(nodeName string, nameSpace string, checkpoint string, r
 	return err
 }
 
-func DeleteBuildahDeployment(clientset *kubernetes.Clientset) error {
-	return clientset.AppsV1().Deployments("docker-registry").Delete(context.TODO(), "buildah-deployment", metav1.DeleteOptions{})
+func BuildahPodPullImage(pod *corev1.Pod, ImageRegistry string) error {
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "buildah-pull-save-job",
+			Namespace: "docker-registry",
+		},
+		Spec: batchv1.JobSpec{
+			TTLSecondsAfterFinished: func() *int32 { i := int32(20); return &i }(),
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app": "buildah-pull-save",
+					},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "buildah",
+							Image: "quay.io/buildah/stable",
+							SecurityContext: &corev1.SecurityContext{
+								Privileged: func() *bool { b := true; return &b }(),
+							},
+							Command: []string{"/bin/bash"},
+							Args: []string{
+								"-c",
+								fmt.Sprintf("buildah pull %s && buildah save -o %s %s", ImageRegistry, "/mnt"+ pod.Name+".tar", ImageRegistry),
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "host-volume",
+									MountPath: "/mnt",
+								},
+							},
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: "host-volume",
+							VolumeSource: corev1.VolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{
+									Path: "/var/lib/kubelet/restore-images/",
+								},
+							},
+						},
+					},
+					RestartPolicy: corev1.RestartPolicyNever,
+				},
+			},
+		},
+	}
+
+	clientset, err := util.CreateClientSet()
+	if err != nil {
+		return err
+	}
+	// _, err = clientset.AppsV1().Deployments(nameSpace).Create(context.TODO(), deployment, metav1.CreateOptions{})
+	_, err = clientset.BatchV1().Jobs("docker-registry").Create(context.TODO(), job, metav1.CreateOptions{})
+	return err
+}
+
+func DeleteBuildahJobs(clientset *kubernetes.Clientset) error {
+	//check the job existed in docker-registry namespace
+	jobs, err := clientset.BatchV1().Jobs("docker-registry").List(context.TODO(), metav1.ListOptions{})
+	// delete the all the completed jobs in jobs
+	if err != nil || len(jobs.Items) == 0 {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	for _, job := range jobs.Items {
+		if job.Status.Succeeded == 1 {
+			clientset.BatchV1().Jobs("docker-registry").Delete(context.TODO(), job.Name, metav1.DeleteOptions{})
+		}
+	}
+	return nil
 }

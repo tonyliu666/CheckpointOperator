@@ -6,7 +6,7 @@ import (
 	"github.com/segmentio/kafka-go"
 	"log"
 	"testing"
-	"tony123.tw/util"
+	util "tony123.tw/util"
 )
 
 // integration tests for checkpointing the pod and producing the message

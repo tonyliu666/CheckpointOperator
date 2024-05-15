@@ -1,22 +1,26 @@
 # Build the manager binary
-FROM golang:1.21 AS builder
+FROM golang:1.21.3 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
-COPY go.mod go.mod
-COPY go.sum go.sum
+# COPY go.mod go.mod
+# COPY go.sum go.sum
+# COPY cmd/main.go cmd/main.go
+# COPY api/ api/
+# COPY internal/controller/ internal/controller/
+# COPY handlers handlers/
+
 # cache deps before building and copying source so that we don't need to re-download as much
 # and so that source changes don't invalidate our downloaded layer
+# Copy the go source
+
+COPY ./ ./
+
 RUN go mod download
 
-# Copy the go source
-COPY cmd/main.go cmd/main.go
-COPY api/ api/
-COPY internal/controller/ internal/controller/
-COPY handlers handlers/
-# Build
+# Builde
 # the GOARCH has not a default value to allow the binary be built according to the host where the command
 # was called. For example, if we call make docker-build in a local env which has the Apple Silicon M1 SO
 # the docker BUILDPLATFORM arg will be linux/arm64 when for Apple x86 it will be linux/amd64. Therefore,

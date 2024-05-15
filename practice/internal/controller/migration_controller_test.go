@@ -2,13 +2,14 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	log "sigs.k8s.io/controller-runtime/pkg/log"
+	"k8s.io/client-go/kubernetes/scheme"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -18,10 +19,10 @@ import (
 var _ = Describe("Migration Controller", func() {
 	const (
 		resourceName = "test-migration"
-		podName      = "dnsutils"
+		podName      = "busybox"
 		deployment   = ""
 		namespace    = "default"
-		destination  = "kubdnode02"
+		destination  = "kubdnode01"
 		timeout      = time.Second * 30
 		interval     = time.Second * 1
 	)
@@ -49,7 +50,7 @@ var _ = Describe("Migration Controller", func() {
 						Destination: destination,
 					},
 				}
-				log.Log.Info("Creating a new Migration", "Migration.Namespace", migration.Namespace, "Migration.Name", migration.Name)
+				fmt.Println("Creating migration resource")
 				Expect(k8sClient.Create(ctx, migration)).Should(Succeed())
 			}
 		})
@@ -70,8 +71,40 @@ var _ = Describe("Migration Controller", func() {
 			Expect(migration.Spec.Deployment).Should(Equal(deployment))
 			Expect(migration.Spec.Namespace).Should(Equal(namespace))
 			Expect(migration.Spec.Destination).Should(Equal(destination))
+			fmt.Println("Migration created successfully", "Migration.Namespace", migration.Namespace, "Migration.Name", migration.Name)
+		})
+		// test the controller behavior
+		It("should checkpoint the pods", func() {
+			By("Reconciling the created resource")
 
-			log.Log.Info("Migration created successfully", "Migration.Namespace", migration.Namespace, "Migration.Name", migration.Name)
+			migrationLookupKey := types.NamespacedName{Name: resourceName, Namespace: "default"}
+			migration := &apiv1alpha1.Migration{}
+			ctx := context.Background()
+
+			// We'll need to retry getting this newly created CronJob, given that creation may not immediately happen.
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, migrationLookupKey, migration)
+				return err == nil
+			}, timeout, interval).Should(BeTrue())
+
+			Expect(migration.Spec.Podname).Should(Equal(podName))
+			Expect(migration.Spec.Deployment).Should(Equal(deployment))
+			Expect(migration.Spec.Namespace).Should(Equal(namespace))
+			Expect(migration.Spec.Destination).Should(Equal(destination))
+
+			// test the controller behavior
+			By("Checkpointing the pods")
+			r := &MigrationReconciler{
+				Client: k8sClient,
+				Scheme: scheme.Scheme ,
+			}
+			
+			err := CheckpointSinglePod(ctx, r, migration, nil)
+			Expect(err).ShouldNot(HaveOccurred())
+			// print the err if err is not nil
+			if err != nil {
+				fmt.Println("there exists some errors here",err)
+			}
 		})
 	})
 })

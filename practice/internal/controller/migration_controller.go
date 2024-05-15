@@ -34,8 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	apiv1alpha1 "tony123.tw/api/v1alpha1"
 	"tony123.tw/handlers"
-
-	"tony123.tw/util"
+	util "tony123.tw/util"
 )
 
 // MigrationReconciler reconciles a Migration object
@@ -51,6 +50,12 @@ type kubeletCheckpointResponse struct {
 //+kubebuilder:rbac:groups=api.my.domain,resources=migrations,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=api.my.domain,resources=migrations/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=api.my.domain,resources=migrations/finalizers,verbs=update
+//+kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=deployments,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="batch",resources=jobs,verbs=get;list;watch;create;update;patch;delete
+
+// want the controller to list all the pods in other namespace and checkpoint them
+
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -63,9 +68,7 @@ type kubeletCheckpointResponse struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.0/pkg/reconcile
 
 func (r *MigrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-
 	// TODO(user): your logic here
-
 	l := log.FromContext(ctx)
 
 	// get the migration object
@@ -88,7 +91,7 @@ func (r *MigrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	return ctrl.Result{}, nil
 }
-func CheckpointDeployment(ctx context.Context, r *MigrationReconciler, migration *apiv1alpha1.Migration) {
+func CheckpointDeployment(ctx context.Context, r *MigrationReconciler, migration *apiv1alpha1.Migration) error{
 	// check all the pods in the deployment and checkpoint them
 	// get the deployment
 	deployment := &appsv1.Deployment{}
@@ -101,41 +104,58 @@ func CheckpointDeployment(ctx context.Context, r *MigrationReconciler, migration
 	}
 	err := r.Get(ctx, ns, deployment)
 	if err != nil {
+		fmt.Println("unable to get the deployment")
 		log.Log.Error(err, "unable to get the deployment")
-		return
+		return err
 	}
 
 	labels := deployment.Spec.Selector
 	labelSelector, err := metav1.LabelSelectorAsSelector(labels)
 	if err != nil {
+		fmt.Println("unable to get the label selector")
 		log.Log.Error(err, "unable to get the label selector")
-		return
+		return err
 	}
 
 	listOptions := &client.ListOptions{
 		Namespace:     namespace,
 		LabelSelector: labelSelector,
 	}
-
 	// get the pods in the deployment
-	CheckpointSinglePod(ctx, r, migration, listOptions)
+	err = CheckpointSinglePod(ctx, r, migration, listOptions)
+	if err != nil {
+		fmt.Println("unable to checkpoint the deployment")
+		log.Log.Error(err, "unable to checkpoint the deployment")
+		return err
+	}
+	return nil
 
 }
 
-func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration *apiv1alpha1.Migration, listOptions *client.ListOptions) {
+func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration *apiv1alpha1.Migration, listOptions *client.ListOptions) error{
 	podList := &corev1.PodList{}
-	logger := log.FromContext(ctx)
+	logger := log.FromContext(ctx) 
 	if listOptions == nil {
 		err := r.List(ctx, podList)
 		if err != nil {
 			logger.Error(err, "unable to list the pods")
-			return
+			return err
+		}
+		// only keep the pod whose name is the same as the podname in the migration object
+		for _, pod := range podList.Items {
+			if pod.Name == migration.Spec.Podname {
+				podList = &corev1.PodList{
+					Items: []corev1.Pod{pod},
+				}
+				break
+			}
 		}
 	} else {
 		err := r.List(ctx, podList, listOptions)
 		if err != nil {
+			fmt.Println("unable to list the pods")
 			logger.Error(err, "unable to list the pods")
-			return
+			return err
 		}
 	}
 
@@ -153,12 +173,12 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 				)
 				log.Log.Info("checkpoint kubelet", "address", address)
 				client := handlers.GetKubeletClient()
-
 				resp, err := handlers.CheckpointPod(client, address)
 				if err != nil {
 					log.Log.Error(err, "unable to checkpoint the pod")
-					return
+					return err
 				}
+				// debug in controller_test.go
 
 				defer resp.Body.Close()
 
@@ -180,40 +200,43 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 
 				if err != nil {
 					log.Log.Error(err, "unable to create clientset")
-					return
+					return err
 				}
 
 				// find the pod ip of registry pod
-				registryIp, err := handlers.ReturnRegistryIP(clientset, pod.Spec.NodeName)
+				// registryIp, err := handlers.ReturnRegistryIP(clientset, pod.Spec.NodeName)
+				fmt.Println("migration.Spec.Destination: ", migration.Spec.Destination)
+				registryIp, err := handlers.ReturnRegistryIP(clientset, migration.Spec.Destination)
 				if err != nil {
 					log.Log.Error(err, "unable to get the registry ip")
-					return
+					return err
 				}
 
 				// buildah deployment deployed on the node which is same as the node of the pod
+				fmt.Println("registry ip: ", registryIp)
 				err = handlers.BuildahPodPushImage(pod.Spec.NodeName, "docker-registry", kubeletResponse.Items[0], registryIp)
-
 				if err != nil {
 					log.Log.Error(err, "unable to push image to registry")
-					return
+					return err
 				}
 				// create an event sent to kafka broker
 				// TODO: sent messages to kafka broker(kubeletResponse.Items[0],and what timestamp)
-				// handlers.ProduceMessage(kubeletResponse.Items[0], pod.Spec.NodeName)
-
-				err = handlers.ProduceMessage(pod.Spec.NodeName, kubeletResponse.Items[0])
+				checkpointPodName := util.ModifyCheckpointToImageName(kubeletResponse.Items[0])
+				fmt.Println("pod.Spec.NodeName: ", pod.Spec.NodeName, "checkpointPodName: ", checkpointPodName)
+				err = handlers.ProduceMessage(pod.Spec.NodeName, checkpointPodName)
 				if err != nil {
 					log.Log.Error(err, "unable to produce message to kafka broker")
 				}
 				// delete this buildah deployment, not yet test for this function
-				err = handlers.DeleteBuildahDeployment(clientset)
+				err = handlers.DeleteBuildahJobs(clientset)
 				if err != nil {
-					log.Log.Error(err, "unable to delete the buildah deployment")
-					return
+					log.Log.Error(err, "unable to delete the buildah jobs")
+					return err
 				}
 			}
 		}
 	}
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

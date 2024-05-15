@@ -3,7 +3,6 @@ module tony123.tw
 go 1.21
 
 require (
-	github.com/golang/mock v1.6.0
 	github.com/onsi/ginkgo/v2 v2.14.0
 	github.com/onsi/gomega v1.30.0
 	github.com/segmentio/kafka-go v0.4.47
@@ -13,7 +12,6 @@ require (
 )
 
 require (
-	github.com/evanphx/json-patch v4.12.0+incompatible // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/klauspost/compress v1.15.9 // indirect
 	github.com/moby/spdystream v0.2.0 // indirect

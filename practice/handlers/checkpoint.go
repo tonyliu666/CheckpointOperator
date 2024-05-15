@@ -18,13 +18,17 @@ func GetKubeletClient() *http.Client {
 	if clientCache != nil {
 		return clientCache
 	}
-	// clientCertPrefix := "/etc/kubernetes/pki"
-	clientCertPrefix := "/home/Tony/cka/kubeadm-vagrant-playground"
+	clientCertPrefix := "/var/run/secrets/kubelet-certs"
+	clientCAPrefix := "/var/run/secrets/kubernetes.io/serviceaccount"
+	// clientCertPrefix := "/home/Tony/cka/kubeadm-vagrant-playground"
+	// clientCert, err := tls.LoadX509KeyPair(
+	// 	fmt.Sprintf("%s/apiserver-kubelet-client.crt", clientCertPrefix),
+	// 	fmt.Sprintf("%s/apiserver-kubelet-client.key", clientCertPrefix),
+	// )
+	fmt.Println("clientCertPrefix: ", clientCertPrefix, "clientCAPrefix: ", clientCAPrefix)
 	clientCert, err := tls.LoadX509KeyPair(
-		// fmt.Sprintf("%s/client.crt", clientCertPrefix),
-		fmt.Sprintf("%s/apiserver-kubelet-client.crt", clientCertPrefix),
-		//fmt.Sprintf("%s/client.key", clientCertPrefix),
-		fmt.Sprintf("%s/apiserver-kubelet-client.key", clientCertPrefix),
+		fmt.Sprintf("%s/client.crt", clientCertPrefix),
+		fmt.Sprintf("%s/client.key", clientCertPrefix),
 	)
 	if err != nil {
 		log.Log.Error(err, "could not read client cert key pair")
@@ -33,7 +37,8 @@ func GetKubeletClient() *http.Client {
 	certs := x509.NewCertPool()
 
 	// We should really load this path dynamically as this depends on deep internals of kubernetes
-	pemData, err := os.ReadFile(fmt.Sprintf("%s/ca.crt", clientCertPrefix))
+	pemData, err := os.ReadFile(fmt.Sprintf("%s/ca.crt", clientCAPrefix))
+
 	if err != nil {
 		log.Log.Error(err, "could not read ca file")
 		return nil

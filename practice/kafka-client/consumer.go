@@ -13,7 +13,7 @@ func main() {
     // Specify the bootstrap servers, topic, and consumer group ID
     // bootstrapServers := "my-cluster-kafka-bootstrap:9092"
     // bootstrapServers := "my-cluster-kafka-bootstrap:9092"
-    bootstrapServers := "192.168.56.3:32195"
+    bootstrapServers := "192.168.56.4:32195"
     
     topic := "my-topic"
     groupID := "my-group"
@@ -35,6 +35,7 @@ func main() {
 
     // Consume messages from the topic
     for {
+        fmt.Println("ready to fetch the message")
         msg, err := reader.FetchMessage(context.Background())
         if err != nil {
             log.Fatalf("Failed to fetch message: %v", err)

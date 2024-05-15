@@ -15,7 +15,7 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
-	"tony123.tw/util"
+	util "tony123.tw/util"
 )
 
 func TestBuildahPodPushImage(t *testing.T) {
