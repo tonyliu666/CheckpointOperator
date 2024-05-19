@@ -20,8 +20,8 @@ func main() {
 
     // kafkaKey := os.Getenv("kafka-key")
     // kafkaValue := os.Getenv("kafka-value")
-    kafkaKey := "key1"
-    kafkaValue := "value1"
+    kafkaKey := "default"
+    kafkaValue := "checkpoint-alpine-counter"
 
     // Create a Kafka consumer (reader)
     reader := kafka.NewReader(kafka.ReaderConfig{
@@ -40,7 +40,7 @@ func main() {
         if err != nil {
             log.Fatalf("Failed to fetch message: %v", err)
         }
-        fmt.Println(msg)
+        fmt.Println(string(msg.Key), string(msg.Value ))
         if string(msg.Key) == kafkaKey && string(msg.Value) == kafkaValue {
             // Commit the offset to acknowledge the message has been processed
             if err := reader.CommitMessages(context.Background(), msg); err != nil {

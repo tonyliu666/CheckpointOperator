@@ -20,12 +20,6 @@ func GetKubeletClient() *http.Client {
 	}
 	clientCertPrefix := "/var/run/secrets/kubelet-certs"
 	clientCAPrefix := "/var/run/secrets/kubernetes.io/serviceaccount"
-	// clientCertPrefix := "/home/Tony/cka/kubeadm-vagrant-playground"
-	// clientCert, err := tls.LoadX509KeyPair(
-	// 	fmt.Sprintf("%s/apiserver-kubelet-client.crt", clientCertPrefix),
-	// 	fmt.Sprintf("%s/apiserver-kubelet-client.key", clientCertPrefix),
-	// )
-	fmt.Println("clientCertPrefix: ", clientCertPrefix, "clientCAPrefix: ", clientCAPrefix)
 	clientCert, err := tls.LoadX509KeyPair(
 		fmt.Sprintf("%s/client.crt", clientCertPrefix),
 		fmt.Sprintf("%s/client.key", clientCertPrefix),

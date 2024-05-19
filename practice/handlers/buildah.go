@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"fmt"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -39,7 +38,7 @@ func BuildahPodPushImage(nodeName string, nameSpace string, checkpoint string, r
 							// builah add the file under checkpointed-image to the new container
 							Args: []string{
 								"-c",
-								"newcontainer=$(buildah from scratch); buildah add $newcontainer " + checkpoint + "  /" + "; buildah commit $newcontainer " + podName + ":latest; buildah rm $newcontainer; buildah push --creds=myuser:mypasswd --tls-verify=false localhost/" + podName + ":latest " + registryIp + ":5000/" + podName + ":latest;",
+								"newcontainer=$(buildah from scratch); buildah add $newcontainer " + checkpoint + "  /" + ";buildah config --annotation=io.kubernetes.cri-o.annotations.checkpoint.name="+podName+" $newcontainer; buildah commit $newcontainer " + podName + ":latest; buildah rm $newcontainer; buildah push --creds=myuser:mypasswd --tls-verify=false localhost/" + podName + ":latest " + registryIp + ":5000/" + podName + ":latest;",
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
@@ -70,70 +69,10 @@ func BuildahPodPushImage(nodeName string, nameSpace string, checkpoint string, r
 	if err != nil {
 		return err
 	}
-	// _, err = clientset.AppsV1().Deployments(nameSpace).Create(context.TODO(), deployment, metav1.CreateOptions{})
 	_, err = clientset.BatchV1().Jobs(nameSpace).Create(context.TODO(), job, metav1.CreateOptions{})
 	return err
 }
 
-func BuildahPodPullImage(pod *corev1.Pod, ImageRegistry string) error {
-	job := &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "buildah-pull-save-job",
-			Namespace: "docker-registry",
-		},
-		Spec: batchv1.JobSpec{
-			TTLSecondsAfterFinished: func() *int32 { i := int32(20); return &i }(),
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"app": "buildah-pull-save",
-					},
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "buildah",
-							Image: "quay.io/buildah/stable",
-							SecurityContext: &corev1.SecurityContext{
-								Privileged: func() *bool { b := true; return &b }(),
-							},
-							Command: []string{"/bin/bash"},
-							Args: []string{
-								"-c",
-								fmt.Sprintf("buildah pull %s && buildah save -o %s %s", ImageRegistry, "/mnt"+ pod.Name+".tar", ImageRegistry),
-							},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "host-volume",
-									MountPath: "/mnt",
-								},
-							},
-						},
-					},
-					Volumes: []corev1.Volume{
-						{
-							Name: "host-volume",
-							VolumeSource: corev1.VolumeSource{
-								HostPath: &corev1.HostPathVolumeSource{
-									Path: "/var/lib/kubelet/restore-images/",
-								},
-							},
-						},
-					},
-					RestartPolicy: corev1.RestartPolicyNever,
-				},
-			},
-		},
-	}
-
-	clientset, err := util.CreateClientSet()
-	if err != nil {
-		return err
-	}
-	// _, err = clientset.AppsV1().Deployments(nameSpace).Create(context.TODO(), deployment, metav1.CreateOptions{})
-	_, err = clientset.BatchV1().Jobs("docker-registry").Create(context.TODO(), job, metav1.CreateOptions{})
-	return err
-}
 
 func DeleteBuildahJobs(clientset *kubernetes.Clientset) error {
 	//check the job existed in docker-registry namespace

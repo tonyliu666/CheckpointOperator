@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	"sync"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -67,8 +66,8 @@ func TestDeployPodOnNewNode(t *testing.T) {
 	}
 
 	// depend on how many docker registry pods, create how many go routines
-	var wg sync.WaitGroup
-	err = DeployPodOnNewNode(&pod, &wg)
+
+	err = DeployPodOnNewNode(&pod)
 	if err != nil {
 		t.Errorf("DeployPodOnNewNode failed: %v", err)
 	}

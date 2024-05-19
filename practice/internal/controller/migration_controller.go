@@ -213,7 +213,7 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 				}
 
 				// buildah deployment deployed on the node which is same as the node of the pod
-				fmt.Println("registry ip: ", registryIp)
+				fmt.Println("registrIP: ", registryIp)
 				err = handlers.BuildahPodPushImage(pod.Spec.NodeName, "docker-registry", kubeletResponse.Items[0], registryIp)
 				if err != nil {
 					log.Log.Error(err, "unable to push image to registry")
@@ -223,7 +223,7 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 				// TODO: sent messages to kafka broker(kubeletResponse.Items[0],and what timestamp)
 				checkpointPodName := util.ModifyCheckpointToImageName(kubeletResponse.Items[0])
 				fmt.Println("pod.Spec.NodeName: ", pod.Spec.NodeName, "checkpointPodName: ", checkpointPodName)
-				err = handlers.ProduceMessage(pod.Spec.NodeName, checkpointPodName)
+				err = handlers.ProduceMessage(migration.Spec.Destination, checkpointPodName)
 				if err != nil {
 					log.Log.Error(err, "unable to produce message to kafka broker")
 				}

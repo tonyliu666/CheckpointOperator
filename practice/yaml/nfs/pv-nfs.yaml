@@ -12,11 +12,11 @@ spec:
     - ReadOnlyMany
     - ReadWriteMany
   capacity:
-    storage: 50Gi
+    storage: 130Gi
   storageClassName: ""
   persistentVolumeReclaimPolicy: Recycle
   volumeMode: Filesystem
   nfs:
-    server: 192.168.50.0
+    server: 192.168.56.10
     path: /mnt/nfs
     readOnly: no

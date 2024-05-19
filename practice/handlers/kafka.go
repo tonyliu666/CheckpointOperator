@@ -14,7 +14,6 @@ func ConsumeMessage(nodeName string) ([]kafka.Message, error) {
 	// get the message from kafka broker
 	// hard-coded only process ten messages at a time
 	bootstrapServers := "my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
-	// bootstrapServers := "192.168.56.3:32195"
 	topic := "my-topic"
 	groupID := "my-group"
 
@@ -31,6 +30,7 @@ func ConsumeMessage(nodeName string) ([]kafka.Message, error) {
 	messageList := []kafka.Message{}
 	for {
 		msg, err := reader.FetchMessage(context.Background())
+		fmt.Println("msg.Key: ", string(msg.Key),"msg.Value:", string(msg.Value), "nodeName: ", nodeName)
 		if err != nil {
 			log.Fatalf("Failed to fetch message: %v", err)
 		}
@@ -40,16 +40,18 @@ func ConsumeMessage(nodeName string) ([]kafka.Message, error) {
 				log.Fatalf("Failed to commit message: %v", err)
 			}
 			messageList = append(messageList, msg)
+		}else{
+			break 
 		}
-		if time.Since(now) > 3*time.Second {
-			return messageList, nil
+		if time.Since(now) > 1*time.Second {
+			break
 		}
 	}
+	return messageList, nil
 
 }
 func ProduceMessage(key string, value string) error {
 	bootstrapServers := "my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
-	// bootstrapServers := "192.168.56.3:32195"
 	topic := "my-topic"
 	value = util.ModifyCheckpointToImageName(value)
 
@@ -58,6 +60,7 @@ func ProduceMessage(key string, value string) error {
 		Addr:     kafka.TCP(bootstrapServers),
 		Topic:    topic,
 		Balancer: &kafka.LeastBytes{},
+		Async: true,
 	}
 
 	// Prepare the message,key and value are read from environment variables
@@ -71,7 +74,7 @@ func ProduceMessage(key string, value string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("message sent")
+	fmt.Println("message sent", key, value)
 
 	// Close the producer
 	if err := writer.Close(); err != nil {

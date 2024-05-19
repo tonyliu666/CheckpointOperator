@@ -18,9 +18,8 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"sync"
-
-
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -43,10 +42,9 @@ type DaemonSetReconciler struct {
 //+kubebuilder:rbac:groups=api.my.domain,resources=daemonsets/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=api.my.domain,resources=daemonsets/finalizers,verbs=update
 //+kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="apps",resources=deployments,verbs=get;list;watch;create;update;patch;delete
-//+kube:builder:rbac:groups="v1",resources=services,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=get;list;watch;create;update;patch;delete
-
+//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -70,10 +68,17 @@ func (r *DaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 	// depend on how many docker registry pods, create how many go routines
 	var wg sync.WaitGroup
+	wg.Add(len(pods.Items))
 	for _, pod := range pods.Items {
-		wg.Add(1)
-		go handlers.DeployPodOnNewNode(&pod, &wg) // Pass the address of wg to the function
+		go func(pod corev1.Pod) {
+			defer wg.Done() // Ensure Done is called
+			if err := handlers.DeployPodOnNewNode(&pod); err != nil {
+				fmt.Printf("Error deploying pod on new node: %v\n", err)
+			}
+		}(pod) // Pass pod as argument to avoid closure capturing issue
 	}
+
+	wg.Wait()
 
 	return ctrl.Result{}, nil
 }
