@@ -1,8 +1,0 @@
-apiVersion: api.tonyliu666.tw/v1alpha1
-kind: Configuration
-metadata:
-  name: configuration-sample
-spec:
-  # TODO(user): Add fields here
-  type: "sample"
-  setting: "default"
