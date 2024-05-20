@@ -18,12 +18,13 @@ package controller
 
 import (
 	"context"
-	"fmt"
 	"sync"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -73,14 +74,16 @@ func (r *DaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		go func(pod corev1.Pod) {
 			defer wg.Done() // Ensure Done is called
 			if err := handlers.DeployPodOnNewNode(&pod); err != nil {
-				fmt.Printf("Error deploying pod on new node: %v\n", err)
+				log.Log.Error(err, "unable to deploy pod")
 			}
 		}(pod) // Pass pod as argument to avoid closure capturing issue
 	}
 
 	wg.Wait()
+	log.Log.Info("All pods are deployed")
 
-	return ctrl.Result{}, nil
+	// return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: time.Second}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -89,6 +92,13 @@ func (r *DaemonSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		// Uncomment the following line adding a pointer to an instance of the controlled resource as an argument
 		// watch daemonset for docker-registry
-		For(&appsv1.DaemonSet{}).
+		For(&appsv1.DaemonSet{
+			// label selector select the daemonset whose label is app: docker-registry
+			Spec: appsv1.DaemonSetSpec{
+				Selector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{"app": "docker-registry"},
+				},
+			},
+		}).
 		Complete(r)
 }

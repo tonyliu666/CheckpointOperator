@@ -70,7 +70,7 @@ func TestBuildahPodPushImage(t *testing.T) {
 	}
 
 	// sometimes, the buildah can push with the error like this: Error: adding content to container "working-container": checking on sources under "/": copier: stat: "/var/lib/kubelet/checkpoints/checkpoint-nginx-7645c5b447-ln5cd_default-nginx-2024-05-07T17:18:07Z.tar": no such file or directory
-	err = BuildahPodPushImage(nodeName, namespace, kubeletResponse.Items[0], registryIp)
+	err = BuildahPodPushImage(0,nodeName, namespace, kubeletResponse.Items[0], registryIp)
 
 	if err != nil {
 		t.Error("unable to push image to registry")

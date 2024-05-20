@@ -124,7 +124,6 @@ func CheckpointDeployment(ctx context.Context, r *MigrationReconciler, migration
 	// get the pods in the deployment
 	err = CheckpointSinglePod(ctx, r, migration, listOptions)
 	if err != nil {
-		fmt.Println("unable to checkpoint the deployment")
 		log.Log.Error(err, "unable to checkpoint the deployment")
 		return err
 	}
@@ -159,7 +158,7 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 		}
 	}
 
-	for _, pod := range podList.Items {
+	for i, pod := range podList.Items {
 		// checkpoint the container in each pod
 		if pod.Status.Phase == corev1.PodRunning {
 			for _, container := range pod.Spec.Containers {
@@ -213,8 +212,8 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 				}
 
 				// buildah deployment deployed on the node which is same as the node of the pod
-				fmt.Println("registrIP: ", registryIp)
-				err = handlers.BuildahPodPushImage(pod.Spec.NodeName, "docker-registry", kubeletResponse.Items[0], registryIp)
+				fmt.Println("registryIP: ", registryIp)
+				err = handlers.BuildahPodPushImage(i,pod.Spec.NodeName, "docker-registry", kubeletResponse.Items[0], registryIp)
 				if err != nil {
 					log.Log.Error(err, "unable to push image to registry")
 					return err

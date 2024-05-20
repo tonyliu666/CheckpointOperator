@@ -70,7 +70,6 @@ func DeployPodOnNewNode(pod *corev1.Pod) error {
             if err != nil {
                 return fmt.Errorf("unable to create pod: %w", err)
             }
-            break
         }
     }
     return nil

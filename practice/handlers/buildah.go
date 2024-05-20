@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -10,12 +11,12 @@ import (
 	util "tony123.tw/util"
 )
 
-func BuildahPodPushImage(nodeName string, nameSpace string, checkpoint string, registryIp string) error {
+func BuildahPodPushImage(index int,nodeName string, nameSpace string, checkpoint string, registryIp string) error {
 	podName := util.ModifyCheckpointToImageName(checkpoint)
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "buildah-job",
-			// set the same namespace as the pod
+			Name: "buildah-job-"+fmt.Sprintf("%d", index),
+			// TODO: change the name if I want to sent all the images of deployment to the registry
 		},
 		// set ttlSecondsAfterFinished to 30 seconds
 		Spec: batchv1.JobSpec{
@@ -84,9 +85,12 @@ func DeleteBuildahJobs(clientset *kubernetes.Clientset) error {
 	if err != nil {
 		return err
 	}
+	backgroundDeletion := metav1.DeletePropagationBackground
 	for _, job := range jobs.Items {
 		if job.Status.Succeeded == 1 {
-			clientset.BatchV1().Jobs("docker-registry").Delete(context.TODO(), job.Name, metav1.DeleteOptions{})
+			clientset.BatchV1().Jobs("docker-registry").Delete(context.TODO(), job.Name, metav1.DeleteOptions{
+				PropagationPolicy: &backgroundDeletion, 
+			})
 		}
 	}
 	return nil
