@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -56,7 +57,6 @@ type kubeletCheckpointResponse struct {
 
 // want the controller to list all the pods in other namespace and checkpoint them
 
-
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
@@ -91,7 +91,7 @@ func (r *MigrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	return ctrl.Result{}, nil
 }
-func CheckpointDeployment(ctx context.Context, r *MigrationReconciler, migration *apiv1alpha1.Migration) error{
+func CheckpointDeployment(ctx context.Context, r *MigrationReconciler, migration *apiv1alpha1.Migration) error {
 	// check all the pods in the deployment and checkpoint them
 	// get the deployment
 	deployment := &appsv1.Deployment{}
@@ -104,7 +104,6 @@ func CheckpointDeployment(ctx context.Context, r *MigrationReconciler, migration
 	}
 	err := r.Get(ctx, ns, deployment)
 	if err != nil {
-		fmt.Println("unable to get the deployment")
 		log.Log.Error(err, "unable to get the deployment")
 		return err
 	}
@@ -131,9 +130,9 @@ func CheckpointDeployment(ctx context.Context, r *MigrationReconciler, migration
 
 }
 
-func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration *apiv1alpha1.Migration, listOptions *client.ListOptions) error{
+func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration *apiv1alpha1.Migration, listOptions *client.ListOptions) error {
 	podList := &corev1.PodList{}
-	logger := log.FromContext(ctx) 
+	logger := log.FromContext(ctx)
 	if listOptions == nil {
 		err := r.List(ctx, podList)
 		if err != nil {
@@ -150,11 +149,21 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 			}
 		}
 	} else {
+		filteredPods := []corev1.Pod{}
 		err := r.List(ctx, podList, listOptions)
 		if err != nil {
 			fmt.Println("unable to list the pods")
 			logger.Error(err, "unable to list the pods")
 			return err
+		}
+		// only keep the pod whose name prefix contains deployment name,and the others removed from the list
+		for i, pod := range podList.Items {
+			if strings.HasPrefix(pod.Name, migration.Spec.Deployment) {
+				filteredPods = append(filteredPods, podList.Items[i])
+			}
+		}
+		podList = &corev1.PodList{
+			Items: filteredPods,
 		}
 	}
 
@@ -213,7 +222,7 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 
 				// buildah deployment deployed on the node which is same as the node of the pod
 				fmt.Println("registryIP: ", registryIp)
-				err = handlers.BuildahPodPushImage(i,pod.Spec.NodeName, "docker-registry", kubeletResponse.Items[0], registryIp)
+				err = handlers.BuildahPodPushImage(i, pod.Spec.NodeName, "docker-registry", kubeletResponse.Items[0], registryIp)
 				if err != nil {
 					log.Log.Error(err, "unable to push image to registry")
 					return err
