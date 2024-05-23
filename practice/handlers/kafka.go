@@ -11,47 +11,6 @@ import (
 	util "tony123.tw/util"
 )
 
-// func ConsumeMessage(nodeName string) ([]kafka.Message, error) {
-// 	// get the message from kafka broker
-// 	// hard-coded only process ten messages at a time
-// 	bootstrapServers := "my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
-// 	topic := "my-topic"
-// 	groupID := "my-group"
-
-// 	// Create a Kafka consumer (reader)
-// 	reader := kafka.NewReader(kafka.ReaderConfig{
-// 		Brokers: []string{bootstrapServers},
-// 		Topic:   topic,
-// 		GroupID: groupID,
-// 	})
-
-// 	defer reader.Close()
-// 	// Consume messages from the topic
-// 	now := time.Now()
-// 	messageList := []kafka.Message{}
-// 	for {
-// 		fmt.Println("ready to fetch message",nodeName)
-// 		msg, err := reader.FetchMessage(context.Background())
-// 		fmt.Println("msg.Key: ", string(msg.Key),"msg.Value:", string(msg.Value), "nodeName: ", nodeName)
-// 		if err != nil {
-// 			log.Fatalf("Failed to fetch message: %v", err)
-// 		}
-// 		if string(msg.Key) == nodeName {
-// 			// Commit the offset to acknowledge the message has been processed
-// 			if err := reader.CommitMessages(context.Background(), msg); err != nil {
-// 				log.Fatalf("Failed to commit message: %v", err)
-// 			}
-// 			messageList = append(messageList, msg)
-// 		}else{
-// 			break
-// 		}
-// 		if time.Since(now) > 30 * time.Millisecond {
-// 			break
-// 		}
-// 	}
-// 	return messageList, nil
-
-// }
 // ConsumeMessage consumes messages from the Kafka topic for the specified nodeName.
 func ConsumeMessage(nodeName string) ([]kafka.Message, error) {
 	bootstrapServers := "my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
