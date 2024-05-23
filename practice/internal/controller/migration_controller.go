@@ -186,7 +186,6 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 					log.Log.Error(err, "unable to checkpoint the pod")
 					return err
 				}
-				// debug in controller_test.go
 
 				defer resp.Body.Close()
 
@@ -212,7 +211,6 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 				}
 
 				// find the pod ip of registry pod
-				// registryIp, err := handlers.ReturnRegistryIP(clientset, pod.Spec.NodeName)
 				fmt.Println("migration.Spec.Destination: ", migration.Spec.Destination)
 				registryIp, err := handlers.ReturnRegistryIP(clientset, migration.Spec.Destination)
 				if err != nil {

@@ -1,12 +1,12 @@
 package handlers
 
 import (
+	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -45,13 +45,32 @@ func GetKubeletClient() *http.Client {
 			Certificates:       []tls.Certificate{clientCert},
 		},
 	}
-	return &http.Client{Transport: tr}
+	return &http.Client{
+		Transport: tr,
+		Timeout:   10 * time.Minute,
+	}
 }
 
 func CheckpointPod(client *http.Client, address string) (*http.Response, error) {
 	logger := log.Log
 	CheckpointStartTime := time.Now()
-	resp, err := client.Post(address, "application/json", strings.NewReader(""))
+
+	fullURL := fmt.Sprintf("%s?timeout=%d", address, 10*60*1000)
+	fmt.Println("fullURL: ", fullURL)
+	// Create the request body
+	requestBody := bytes.NewBuffer([]byte("{}"))
+
+	// Create a new request
+	req, err := http.NewRequest("POST", fullURL, requestBody)
+	if err != nil {
+		fmt.Println("Error creating request:", err)
+		return nil,err
+	}
+	req.Header.Set("Content-Type", "application/json")
+    // Send the request
+    resp, err := client.Do(req)
+	// set the timeout for kubelet checkpoint api, the timeout within the query
+	// resp, err := client.Post(address, "application/json", strings.NewReader("{}"))
 	CheckpointEndTime := time.Now()
 	CheckpointDuration := CheckpointEndTime.Sub(CheckpointStartTime).Milliseconds()
 	logger.Info("Checkpoint Duration: ", "Duration", CheckpointDuration)

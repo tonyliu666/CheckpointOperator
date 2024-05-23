@@ -6,5 +6,5 @@ metadata:
 spec:
   containers:
   - name: transformers
-    image: 140.114.91.175:5001/transformer:latest
+    image: tonyliu666/transformer:latest
   nodeName: kubenode01

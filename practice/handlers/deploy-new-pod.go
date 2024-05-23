@@ -37,6 +37,7 @@ func DeployPodOnNewNode(pod *corev1.Pod) error {
             return fmt.Errorf("failed to read response body: %w", err)
         }
         fmt.Println("checkPointPodName: ", podName, "body", string(body))
+        // TODO: If buildah pushing a big chunk of image to docker registry, that body will not contain the podname at this moment
         if strings.Contains(string(body), podName) {
             imageName := podName + ":latest"
             registryNodePortServiceIP, err := util.GetNodePortServiceIP(pod.Status.HostIP, "docker-registry")
@@ -58,7 +59,6 @@ func DeployPodOnNewNode(pod *corev1.Pod) error {
                         },
                     },
                     NodeName: nodeName,
-                    
                 },
             }
 

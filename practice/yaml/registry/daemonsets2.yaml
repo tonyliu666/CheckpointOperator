@@ -23,16 +23,23 @@ spec:
         volumeMounts:
         - name: my-persistent-volume
           mountPath: /var/lib/registry
+        - name: config-volume
+          mountPath: /etc/docker/registry
         env:
         - name: REGISTRY_HTTP_SECRET
           # mypasswd
           value: myuser:$2y$05$SC5AAIwwjc54t4h4XQEFXey5a5xEkdH6sR7SiwzSTRqvVpa6R2HbW
-
+      # Assuming /auth is the directory containing the htpasswd file
       volumes:
       - name: my-persistent-volume
         persistentVolumeClaim:
           claimName: nfs-test
-        # Assuming /auth is the directory containing the htpasswd file
+      - name: config-volume
+        configMap:
+          name: registry-config
+          items:
+          - key: config.yml
+            path: config.yml
 
 ---
 apiVersion: v1
@@ -41,14 +48,6 @@ metadata:
   name: docker-registry-service
   namespace: docker-registry
 spec:
-  # type: ClusterIP
-  # ports:
-  # - protocol: TCP
-  #   port: 30010
-  #   targetPort: 5000
-  #   # nodePort: 30010 # Specify the NodePort here
-  # selector:
-  #   app: docker-registry
   type: NodePort
   ports:
   - protocol: TCP
