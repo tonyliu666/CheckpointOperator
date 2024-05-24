@@ -1,18 +1,16 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 	"testwebhook/k8sclient"
 	"testwebhook/kafkaproducer"
-	"time"
 	"testwebhook/util"
+	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
+	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -46,6 +44,9 @@ type Event struct {
 	} `json:"events"`
 }
 
+var registryPodList *v1.PodList
+
+
 func webhookHandler(w http.ResponseWriter, r *http.Request) {
 	var event Event
 	// Decode the JSON payload from the request body
@@ -63,18 +64,10 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("Event: ", e)
 			// if the mediaType is equal to application/vnd.oci.image.manifest.v1+json, then mean all the image content has been pushed
 			if e.Target.MediaType == "application/vnd.oci.image.manifest.v1+json" || e.Target.MediaType == "application/vnd.docker.distribution.manifest.v2+json" {
-				client, err := k8sclient.CreateClientSet()
-				if err != nil {
-					log.Log.Error(err, "unable to create clientset")
-				}
-				// TODO: get the docker registry pod list and the pod deployed on which node
-				registryPodList, err := client.CoreV1().Pods("docker-registry").List(context.TODO(), metav1.ListOptions{
-					LabelSelector: "app=docker-registry",
-				})
 				// hostIP is the data like this 10.244.16.247:5000, I want to get 10.244.16.247
 				registryPodIP := e.Request.Host
 				registryPodIP = strings.Split(registryPodIP, ":")[0]
-				fmt.Println("registryPodIP: ", registryPodIP)
+				fmt.Println("registryPodIP: ", registryPodIP) 
 				// get the node name of the pod
 				nodeName, err := util.GetNodeNameByHostIP(registryPodIP, registryPodList)
 				fmt.Println("nodeName: ", nodeName, "repository: ", e.Target.Repository)
@@ -91,6 +84,12 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	var err error
+	registryPodList, err = k8sclient.ListPods("docker-registry", "app=docker-registry")
+	if err != nil {
+		log.Log.Error(err, "unable to list pods")
+	}
+
 	http.HandleFunc("/webhook", webhookHandler)
 	fmt.Println("Server started at :8080")
 	http.ListenAndServe(":8080", nil)

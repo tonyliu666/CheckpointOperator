@@ -2,29 +2,61 @@ package util
 
 import (
 	"context"
+	"os"
 	"testing"
+	"testwebhook/k8sclient"
 
-	corev1 "k8s.io/api/core/v1"
-	fake "k8s.io/client-go/kubernetes/fake"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	log "github.com/sirupsen/logrus"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 func TestGetNodeNameByHostIP(t *testing.T) {
-	fakeClient := fake.NewSimpleClientset()
-	// list the docker registry pods in docker-registry namespace
-	registryPodList := &corev1.PodList{}
-	if err := fakeClient.List(context.TODO(), registryPodList, client.InNamespace("docker-registry"), client.MatchingLabels{"app": "docker-registry"}); err != nil {
-		t.Errorf("unable to list pods")
+	client, err := k8sclient.CreateClientSet()
+	if err != nil {
+		t.Errorf("unable to create clientset")
 	}
 
+	// list the docker registry pods in docker-registry namespace
+	podList, err := client.CoreV1().Pods("docker-registry").List(context.TODO(), metav1.ListOptions{
+		LabelSelector: "app=docker-registry",
+	})
+	if err != nil {
+		t.Errorf("unable to list the pods in the docker-registry namespace")
+	}
+	podIP := "10.244.96.50"
+	nodeName, err := GetNodeNameByHostIP(podIP, podList)
+
 	// list the pods in the docker-registry namespace
-	podIP := "10.244.96.42"
-	for _, pod := range registryPodList.Items {
-		if pod.Status.PodIP == podIP {
-			nodeName := pod.Spec.NodeName
-			if nodeName != "kubenode2" {
-				t.Errorf("the node name is not correct")
-			}
+
+	if err != nil {
+		t.Errorf("failed to get the node name by host IP: %s", podIP)
+	}
+	if nodeName != "kubenode02" {
+		t.Errorf("the node name is not correct")
+	}
+
+}
+
+func createClientSet() (*kubernetes.Clientset, error) {
+	// get the kubernetes config
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		// If running outside the cluster, use kubeconfig file
+		kubeconfig := os.Getenv("HOME") + "/.kube/config"
+		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+		if err != nil {
+			panic(err.Error())
 		}
 	}
+
+	// Create Kubernetes client
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		log.Error(err, "unable to create clientset")
+		return nil, err
+	}
+	return clientset, nil
 }

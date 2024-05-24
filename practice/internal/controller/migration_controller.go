@@ -226,7 +226,6 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 					return err
 				}
 				
-				// delete this buildah deployment, not yet test for this function
 				err = handlers.DeleteBuildahJobs(clientset)
 				if err != nil {
 					log.Log.Error(err, "unable to delete the buildah jobs")

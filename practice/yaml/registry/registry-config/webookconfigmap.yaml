@@ -27,7 +27,7 @@ data:
       endpoints:
         - name: "Publish to Webhooks system"
           url: http://webhooktest:8080/webhook
-          timeout: 1s
+          timeout: 5s
           threshold: 5
           backoff: 1s
           events:
