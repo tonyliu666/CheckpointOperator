@@ -56,7 +56,6 @@ func CheckpointPod(client *http.Client, address string) (*http.Response, error) 
 	CheckpointStartTime := time.Now()
 
 	fullURL := fmt.Sprintf("%s?timeout=%d", address, 10*60*1000)
-	fmt.Println("fullURL: ", fullURL)
 	// Create the request body
 	requestBody := bytes.NewBuffer([]byte("{}"))
 

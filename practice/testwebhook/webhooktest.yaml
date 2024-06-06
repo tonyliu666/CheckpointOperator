@@ -11,6 +11,8 @@ spec:
     image: tonyliu666/testwebhook:latest
     ports:
     - containerPort: 8080
+  imagePullSecrets:
+    - name: regcred
   
 --- 
 # deploy pod as a service 

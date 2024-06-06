@@ -156,7 +156,7 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 			logger.Error(err, "unable to list the pods")
 			return err
 		}
-		// only keep the pod whose name prefix contains deployment name,and the others removed from the list
+		// Now I can't handle this case: podname: nginx, deployment: nginx recorded in custom resource, the nginx-deployment will also be checkpointed
 		for i, pod := range podList.Items {
 			if strings.HasPrefix(pod.Name, migration.Spec.Deployment) {
 				filteredPods = append(filteredPods, podList.Items[i])
@@ -211,7 +211,6 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 				}
 
 				// find the pod ip of registry pod
-				fmt.Println("migration.Spec.Destination: ", migration.Spec.Destination)
 				registryIp, err := handlers.ReturnRegistryIP(clientset, migration.Spec.Destination)
 				if err != nil {
 					log.Log.Error(err, "unable to get the registry ip")
@@ -219,7 +218,6 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 				}
 
 				// buildah deployment deployed on the node which is same as the node of the pod
-				fmt.Println("registryIP: ", registryIp)
 				err = handlers.BuildahPodPushImage(i, pod.Spec.NodeName, "docker-registry", kubeletResponse.Items[0], registryIp)
 				if err != nil {
 					log.Log.Error(err, "unable to push image to registry")

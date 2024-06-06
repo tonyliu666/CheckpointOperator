@@ -19,38 +19,86 @@ spec:
         image: registry:latest
         ports:
         - containerPort: 5000
+          hostPort: 30010
           name: registry
+          protocol: TCP
         volumeMounts:
-        - name: my-persistent-volume
+        - name: nfs-registry
           mountPath: /var/lib/registry
-        # set the username and password
+        - name: config-volume
+          mountPath: /etc/docker/registry
         env:
-        - name: REGISTRY_AUTH
-          value: htpasswd
-        - name: REGISTRY_AUTH_HTPASSWD_REALM
-          value: Registry Realm
-        - name: REGISTRY_AUTH_HTPASSWD_PATH
-          value: /auth/htpasswd
-
+        - name: REGISTRY_HTTP_SECRET
+          # mypasswd
+          value: myuser:$2y$05$SC5AAIwwjc54t4h4XQEFXey5a5xEkdH6sR7SiwzSTRqvVpa6R2HbW
+      
+      # Assuming /auth is the directory containing the htpasswd file
       volumes:
-      - name: my-persistent-volume
-        persistentVolumeClaim:
-          claimName: nfs-test
-      - name: my-auth-volume
-        secret:
-          secretName: regcred
+      - name: nfs-registry
+        emptyDir: {}
+      - name: config-volume
+        configMap:
+          name: registry-config
+          items:
+          - key: config.yml
+            path: config.yml
 
 ---
-apiVersion: v1
-kind: Service
-metadata:
-  name: docker-registry-service
-spec:
-  type: NodePort
-  ports:
-  - protocol: TCP
-    port: 31000
-    targetPort: 5000
-    nodePort: 31000 # Specify the NodePort here
-  selector:
-    app: docker-registry
+# apiVersion: apps/v1
+# kind: StatefulSet
+# metadata:
+#   name: docker-registry-1
+#   namespace: docker-registry
+# spec:
+#   serviceName: "docker-registry-service"
+#   replicas: 1
+#   selector:
+#     matchLabels:
+#       app: docker-registry
+#   template:
+#     metadata:
+#       labels:
+#         app: docker-registry
+#         instance: registry-1
+#     spec:
+#       containers:
+#       - name: docker-registry
+#         image: registry:latest
+#         ports:
+#         - containerPort: 5000
+#           name: registry
+#         volumeMounts:
+#         - name: registry-data
+#           mountPath: /var/lib/registry
+#         - name: config-volume
+#           mountPath: /etc/docker/registry
+#         env:
+#         - name: REGISTRY_HTTP_SECRET
+#           value: myuser:$2y$05$SC5AAIwwjc54t4h4XQEFXey5a5xEkdH6sR7SiwzSTRqvVpa6R2HbW
+#       imagePullSecrets:
+#         - name: regcred 
+#       volumes:
+#       - name: registry-data
+#         emptyDir: {}
+#       - name: config-volume
+#         configMap:
+#           name: registry-config
+#           items:
+#           - key: config.yml
+#             path: config.yml
+# --- 
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: docker-registry-service-1
+#   namespace: docker-registry
+# spec:
+#   type: NodePort
+#   ports:
+#   - protocol: TCP
+#     port: 5000
+#     targetPort: 5000
+#     nodePort: 30010
+#   selector:
+#     app: docker-registry
+#     instance: registry-1

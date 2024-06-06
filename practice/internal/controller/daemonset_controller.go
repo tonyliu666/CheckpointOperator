@@ -80,7 +80,6 @@ func (r *DaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	wg.Wait()
-	log.Log.Info("All pods are deployed")
 
 	// return ctrl.Result{}, nil
 	return ctrl.Result{RequeueAfter: time.Second}, nil

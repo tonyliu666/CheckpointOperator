@@ -1,0 +1,15 @@
+# postgresql pod cannot be checkpointed
+apiVersion: v1
+kind: Pod
+metadata:
+  # name: checkpoint-postgres1
+  name: checkpoint-counter1
+  namespace: default
+spec:
+  containers:
+  - name: counter
+    # image: localhost/postgresl:latest
+    image: localhost/counter:latest
+  # imagePullSecrets:
+  #   - name: regcred
+  nodeName: kubenode01

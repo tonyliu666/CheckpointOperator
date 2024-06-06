@@ -61,17 +61,24 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 		// TODO: sent messages to kafka broker(kubeletResponse.Items[0],and what timestamp)
 		if e.Action == "push" {
 			// Print the event for debugging purposes
-			fmt.Println("Event: ", e)
+			log.Log.Info("Event received", "event", e)
 			// if the mediaType is equal to application/vnd.oci.image.manifest.v1+json, then mean all the image content has been pushed
 			if e.Target.MediaType == "application/vnd.oci.image.manifest.v1+json" || e.Target.MediaType == "application/vnd.docker.distribution.manifest.v2+json" {
 				// hostIP is the data like this 10.244.16.247:5000, I want to get 10.244.16.247
 				registryPodIP := e.Request.Host
+
+				// fmt.Println("registryPodIP first: ", registryPodIP)
+				log.Log.Info("registryPodIP first:" , registryPodIP)
 				registryPodIP = strings.Split(registryPodIP, ":")[0]
-				fmt.Println("registryPodIP: ", registryPodIP) 
+				// fmt.Println("registryPodIP second: ", registryPodIP)
+				log.Log.Info("registryPodIP second:" , registryPodIP)
 				// get the node name of the pod
 				nodeName, err := util.GetNodeNameByHostIP(registryPodIP, registryPodList)
-				fmt.Println("nodeName: ", nodeName, "repository: ", e.Target.Repository)
 				// send messages to kafka broker
+				if nodeName == "" {
+					fmt.Println("unable to get the node name")
+					continue 
+				}
 				err = kafkaproducer.ProduceMessage(nodeName, e.Target.Repository)
 				if err != nil {
 					log.Log.Error(err, "unable to produce message to kafka broker")

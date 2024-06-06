@@ -189,6 +189,30 @@ golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
 $(GOLANGCI_LINT): $(LOCALBIN)
 	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/cmd/golangci-lint,${GOLANGCI_LINT_VERSION})
 
+.PHONY: buildupwebhook
+buildupwebhook: ## Run the webhook server for testing.
+	cd testwebhook && docker build -t testwebhook  .
+	docker tag testwebhook:latest tonyliu666/testwebhook:latest
+	docker push tonyliu666/testwebhook:latest
+	kubectl apply -f testwebhook/webhooktest.yaml
+.PHONY: upwebhook
+upwebhook: ## Run the webhook server for testing.
+	kubectl apply -f testwebhook/webhooktest.yaml
+.PHONY: downwebhook
+downwebhook: ## Run the webhook server for testing.
+	kubectl delete -f testwebhook/webhooktest.yaml
+.PHONY: upregistry
+upregistry: ## Run the webhook server for testing.
+	kubectl apply -f yaml/registry/daemonsets.yaml
+	
+.PHONY: downregistry
+downregistry: ## Run the webhook server for testing.
+	kubectl delete -f yaml/registry/daemonsets.yaml
+
+.PHONY: deploysecretkey
+deploysecretkey: ## If the practice-controller-manager is still in ContainerCreating state, then delete that pod and it can run again.
+	kubectl get secrets kubelet-client-certs -n key-store -o yaml | sed 's/namespace: key-store/namespace: practice-system/g' | kubectl apply -f -
+
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary (ideally with version)
 # $2 - package url which can be installed

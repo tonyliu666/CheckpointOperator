@@ -1,26 +1,23 @@
 package util
 
 import (
-	"context"
 	"fmt"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	corev1 "k8s.io/api/core/v1"
 )
 
-func GetNodePortServiceIP(hostIP string,namespace string) (string, error) {
-	// Create a new Kubernetes client configuration
-	clientset, err := CreateClientSet()
-	
-	if err != nil {
-		return "", err
+func GetPodHostIP(pod *corev1.Pod, namespace string) (string, error) {
+	// Get the container hostPort
+	hostPort := ""
+	for _, container := range pod.Spec.Containers {
+		for _, port := range container.Ports {
+			hostPort = fmt.Sprintf("%d", port.HostPort)
+			break 
+		}
 	}
-
-	// Get the service object with the prefix name docker-registry
-	service, err := clientset.CoreV1().Services(namespace).Get(context.TODO(), "docker-registry-service", metav1.GetOptions{})
-	
-	if err != nil {
-		return "", err
-	}
+	// get the hostIP of the pod
+	hostIP := pod.Status.HostIP
 	// return the service domain name
-	return fmt.Sprintf("%s:%d", hostIP, service.Spec.Ports[0].NodePort), nil
+	return fmt.Sprintf("%s:%s", hostIP, hostPort), nil
 
 }

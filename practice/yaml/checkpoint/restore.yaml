@@ -1,9 +1,11 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: nginx-restore
+  name: httpd123
 spec:
   containers:
-  - name: nginx-restore
-    image: docker.io/tonyliu666/checkpoint:latest
-  nodeName: kubenode01
+  - name: httpd
+    # image: docker.io/tonyliu666/checkpoint:latest
+    # image: 192.168.56.3:30010/checkpoint-redis:latest
+    image: 192.168.56.5:30010/red1s:latest
+  nodeName: kubenode03

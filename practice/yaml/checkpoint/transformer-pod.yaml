@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: nginx-3
+  name: checkpoint-transformer2
   namespace: default
 spec:
   containers:
-  - name: nginx
-    image: 192.168.56.5:30010/checkpoint-nginx:latest
-  nodeName: kubenode03
+  - name: machine-learning
+    image: 192.168.56.3:30010/machine-learning2:latest
+  nodeName: kubenode02

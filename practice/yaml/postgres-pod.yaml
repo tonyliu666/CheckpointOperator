@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: postgrespod
+spec:
+  containers:
+  - name: postgres
+    image: docker.io/postgres:latest
+    ports:
+      - containerPort: 5432
+    env:
+      - name: POSTGRES_DB
+        value: mydatabase
+      - name: POSTGRES_USER
+        value: myuser
+      - name: POSTGRES_PASSWORD
+        value: mypassword
+  imagePullSecrets:
+    - name: regcred
+  nodeName: kubenode01

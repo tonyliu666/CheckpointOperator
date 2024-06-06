@@ -1,0 +1,15 @@
+apiVersion: v1 
+kind: Pod
+metadata: 
+  name: redis7
+  namespace: default
+spec:
+  containers:
+  - name: redis
+    image: redis:latest
+  imagePullSecrets:
+    - name: regcred
+  nodeName: kubenode01
+
+  
+
