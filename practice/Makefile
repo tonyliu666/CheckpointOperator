@@ -213,6 +213,23 @@ downregistry: ## Run the webhook server for testing.
 deploysecretkey: ## If the practice-controller-manager is still in ContainerCreating state, then delete that pod and it can run again.
 	kubectl get secrets kubelet-client-certs -n key-store -o yaml | sed 's/namespace: key-store/namespace: practice-system/g' | kubectl apply -f -
 
+.PHONY: imagepullsecret
+imagepullsecret: ## If the practice-controller-manager is still in ContainerCreating state, then delete that pod and it can run again.
+	kubectl get secrets regcred -n docker-registry -o yaml | sed 's/namespace: docker-registry/namespace: restore/g' | kubectl apply -f -
+
+.PHONY: deleteoldpod
+deleteoldpod: ## If the practice-controller-manager is still in ContainerCreating state, then delete that pod and it can run again.
+	cd handlers/restore && docker build -t restore .
+	docker tag restore:latest tonyliu666/restore:latest
+	docker push tonyliu666/restore:latest
+.PHONY: applyoldpod
+applyoldpod: 
+	kubectl apply -f handlers/restore/restore-handler.yaml
+	kubectl apply -f handlers/restore/restore-role.yaml
+.PHONY: downoldpod
+downoldpod:
+	kubectl delete -f handlers/restore/restore-handler.yaml
+
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary (ideally with version)
 # $2 - package url which can be installed

@@ -64,11 +64,20 @@ func DeployPodOnNewNode(pod *corev1.Pod) error {
 			if err != nil {
 				return fmt.Errorf("unable to create clientset: %w", err)
 			}
-			_, err = clientset.CoreV1().Pods("default").Create(context.TODO(), migratePod, metav1.CreateOptions{})
+			// TODO: replace default namespace with the namespace of the pod
+			newpod, err := clientset.CoreV1().Pods("default").Create(context.TODO(), migratePod, metav1.CreateOptions{})
 			if err != nil {
 				return fmt.Errorf("unable to create pod: %w", err)
 			}
-            // TODO: notify the other service to watch this new pod created successfully or not
+			// TODO: notify the other service to watch this new pod created successfully or not
+			// send kafka message to broker, default namesapce in the later will be changed to random namespace
+			if err := ProduceMessageToDifferentTopics(newpod.Name, "default", nodeName); err != nil {
+				return fmt.Errorf("failed to produce message: %w", err)
+			}
+			log.Log.Info("Pod created",
+				"podName", newpod.Name,
+				"nodeName", nodeName,
+			)
 		}
 	}
 	return nil

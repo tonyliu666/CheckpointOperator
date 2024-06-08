@@ -1,24 +1,23 @@
-# please apply this yaml, otherwise the webhhook handler cannot list the registry pods due to lack of permissions
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  namespace: docker-registry
+  namespace: default
   name: pod-list-role
 rules:
 - apiGroups: [""]
   resources: ["pods"]
-  verbs: ["list", "get"]
+  verbs: ["list", "get", "delete"]
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: pod-list-rolebinding
-  namespace: docker-registry
+  namespace: default
 subjects:
 - kind: ServiceAccount
   name: default
-  namespace: docker-registry
+  namespace: restore
 roleRef:
   kind: Role
   name: pod-list-role

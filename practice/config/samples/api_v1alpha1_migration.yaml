@@ -4,10 +4,10 @@ metadata:
   name: migration-sample
 spec:
   # TODO(user): Add fields here
-  podname: postgrespod
+  podname: checkpoint-redis8
   deployment: 
   namespace: default
-  destination: kubenode02
+  destination: kubenode01
 
   # Optional field: deployment
   # Users can choose to include it or leave it empty

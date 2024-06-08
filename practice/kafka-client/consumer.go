@@ -15,7 +15,8 @@ func main() {
     // bootstrapServers := "my-cluster-kafka-bootstrap:9092"
     bootstrapServers := "192.168.56.4:32195"
     
-    topic := "my-topic"
+    // topic := "my-topic"
+    topic := "delete-pod"
     groupID := "my-group"
 
     // kafkaKey := os.Getenv("kafka-key")

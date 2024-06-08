@@ -3,11 +3,69 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"github.com/segmentio/kafka-go"
-	"log"
+	"strings"
 	"testing"
+	"time"
+	"log"
+	"github.com/segmentio/kafka-go"
+	logger"sigs.k8s.io/controller-runtime/pkg/log"
 	util "tony123.tw/util"
 )
+
+func TestProduceMessageToDifferentTopics(t *testing.T) {
+	// newpod.Name=httpd, nodeName="kubenode01"
+	ProduceMessageToDifferentTopics("httpd", "default", "kubenode01")
+	newPodName, nameSpace, nodeName, err:=consumeMessagehelper()
+	if err != nil {
+		t.Error("Error consuming kafka message")
+	}
+	if newPodName != "httpd" || nameSpace != "default" || nodeName != "kubenode01" {
+		t.Error("Error in consuming kafka message")
+	}
+}
+func consumeMessagehelper() (string, string, string, error) {
+	// bootstrapServers := "my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+	bootstrapServers := "192.168.56.4:32195"
+	topic := "delete-pod"
+	groupID := "my-group"
+
+	// Create a Kafka consumer (reader)
+	reader := kafka.NewReader(kafka.ReaderConfig{
+		Brokers: []string{bootstrapServers},
+		Topic:   topic,
+		GroupID: groupID,
+	})
+
+	defer reader.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	logger.Log.Info("ready to fetch message")
+
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("context done")
+		default:
+			msg, err := reader.FetchMessage(ctx)
+			if err != nil {
+				if ctx.Err() == context.DeadlineExceeded {
+					return "", "", "", fmt.Errorf("context deadline exceeded")
+				}
+				return "", "", "", err
+			}
+			reader.CommitMessages(ctx, msg)
+			//the mesage sent by the original sender is key: podName, value: nameSpace/nodeName
+			logger.Log.Info("msg.Key", string(msg.Key), "msg.Value", string(msg.Value))
+
+			// seperate the string with left half string is namespace and right half string is nodeName
+			newPodName := string(msg.Key)
+			nameSpace := string(msg.Value)[0:strings.Index(string(msg.Value), "/")]
+			nodeName := string(msg.Value)[strings.Index(string(msg.Value), "/")+1:]
+			return newPodName, nameSpace, nodeName, nil
+		}
+	}
+}
 
 // integration tests for checkpointing the pod and producing the message
 // now before running this test, I should run port-forward the service, svc/my-cluster-kafka-bootstrap

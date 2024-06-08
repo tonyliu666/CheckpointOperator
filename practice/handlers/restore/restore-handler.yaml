@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: restore-handler
+  namespace: restore
+  labels:
+    app: restore-handler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: restore-handler
+  template:
+    metadata:
+      labels:
+        app: restore-handler
+    spec:
+      containers:
+      - name: restore-handler
+        image: tonyliu666/restore:latest
+      imagePullSecrets:
+        - name: regcred
+

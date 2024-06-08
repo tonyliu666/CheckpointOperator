@@ -66,7 +66,6 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 			if e.Target.MediaType == "application/vnd.oci.image.manifest.v1+json" || e.Target.MediaType == "application/vnd.docker.distribution.manifest.v2+json" {
 				// hostIP is the data like this 10.244.16.247:5000, I want to get 10.244.16.247
 				registryPodIP := e.Request.Host
-
 				// fmt.Println("registryPodIP first: ", registryPodIP)
 				log.Log.Info("registryPodIP first:" , registryPodIP)
 				registryPodIP = strings.Split(registryPodIP, ":")[0]
