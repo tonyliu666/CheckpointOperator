@@ -1,0 +1,28 @@
+// SPDX-License-Identifier: MIT
+
+syntax = "proto3";
+option go_package = "./generated";
+
+// This one contains statistics about dump/restore process
+message dump_stats_entry {
+  uint32 freezing_time = 1;
+  uint32 frozen_time = 2;
+  uint32 memdump_time = 3;
+  uint32 memwrite_time = 4;
+
+  uint64 pages_scanned = 5;
+  uint64 pages_skipped_parent = 6;
+  uint64 pages_written = 7;
+
+  uint32 irmap_resolve = 8;
+
+  uint64 pages_lazy = 9;
+  uint64 page_pipes = 10;
+  uint64 page_pipe_bufs = 11;
+
+  uint64 shpages_scanned = 12;
+  uint64 shpages_skipped_parent = 13;
+  uint64 shpages_written = 14;
+}
+
+message stats_entry { dump_stats_entry dump = 1; }

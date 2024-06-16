@@ -3,7 +3,6 @@ package kafka
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/segmentio/kafka-go"
@@ -11,7 +10,7 @@ import (
 )
 
 // ConsumeMessage consumes messages from the Kafka topic for the specified nodeName.
-func ConsumeMessage() (string,string,string, error) {
+func ConsumeMessage() (kafka.Message, error) {
 	bootstrapServers := "my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
 	topic := "delete-pod"
 	groupID := "my-group"
@@ -34,12 +33,12 @@ func ConsumeMessage() (string,string,string, error) {
 		select {
 		case <-ctx.Done():
 			fmt.Println("context done")
-			return "","","",ctx.Err()
+			return kafka.Message{}, nil
 		default:
 			msg, err := reader.FetchMessage(ctx)
 			if err != nil {
 				if ctx.Err() == context.DeadlineExceeded {
-					return "","","",nil
+					return kafka.Message{}, fmt.Errorf("Failed to fetch message: %v", err)
 				}
 				continue
 			}
@@ -49,10 +48,28 @@ func ConsumeMessage() (string,string,string, error) {
 			log.Info("msg.Key ", string(msg.Key), " msg.Value ", string(msg.Value))
 
 			// seperate the string with left half string is namespace and right half string is nodeName
-			newPodName := string(msg.Key)
-			nameSpace := string(msg.Value)[0:strings.Index(string(msg.Value), "/")]
-			nodeName := string(msg.Value)[strings.Index(string(msg.Value), "/")+1:]
-			return newPodName, nameSpace, nodeName, nil
+			return msg, nil
 		}
 	}
+}
+func CommitMessages(msg kafka.Message) error{
+	bootstrapServers := "my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
+	topic := "delete-pod"
+	groupID := "my-group"
+
+	// Create a Kafka consumer (reader)
+	reader := kafka.NewReader(kafka.ReaderConfig{
+		Brokers: []string{bootstrapServers},
+		Topic:   topic,
+		GroupID: groupID,
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := reader.CommitMessages(ctx,msg); err != nil {
+		log.Error("Failed to commit message: %v", err)
+		return err
+	}
+	return nil
 }

@@ -1,0 +1,37 @@
+syntax = "proto3";
+import "stats.proto";
+package api;
+
+option go_package = "./generated";
+
+message TransferCheckpointRequest {
+  string podName = 1;
+  string transferTo = 2;
+}
+
+message TransferCheckpointResponse { string podName = 1; }
+message CreateCheckpointImageRequest {
+  string checkpointArchiveLocation = 1;
+  string podName = 2;
+  string checkpointName = 3; //checkpointed tar file name
+}
+message CreateCheckpointImageResponse {}
+
+message AcceptCheckpointRequest {
+  string checkpointImageName = 1;
+  bytes checkpointOCIArchive = 2;
+}
+
+message AcceptCheckpointResponse {}
+
+message ExtractStatsRequest { string checkpointArchiveLocation = 1; }
+
+service Agent {
+  rpc CreateCheckpointImage(CreateCheckpointImageRequest)
+      returns (CreateCheckpointImageResponse) {}
+  rpc TransferCheckpoint(TransferCheckpointRequest)
+      returns (TransferCheckpointResponse) {}
+  rpc ExtractStats(ExtractStatsRequest) returns (stats_entry) {}
+  rpc AcceptCheckpoint(stream AcceptCheckpointRequest)
+      returns (AcceptCheckpointResponse) {}
+}

@@ -1,0 +1,40 @@
+apiVersion: v1 
+kind: Pod
+# creaye a pod that haas a volume mounted at /home/vagrant
+metadata:
+  name: mypod
+spec:
+  containers:
+  - name: mypod
+    image: tonyliu666/test-image:latest
+    volumeMounts:
+    - name: task-pv-storage
+      mountPath: /home/vagrant
+    - name: policy-volume
+      mountPath: /etc/containers/policy.json
+    - name: container-storage-runroot
+      mountPath: /run/containers/storage
+    - name: container-storage-graphroot
+      mountPath: /var/lib/containers/storage
+    # securityContext:
+    #   capabilities:
+    #     add:
+    #       - SYS_ADMIN
+    #       - SYS_CHROOT
+    securityContext:
+      privileged: true
+  volumes:
+    - name: task-pv-storage
+      persistentVolumeClaim:
+        claimName: migrate-pv-claim
+    - name: policy-volume
+      hostPath:
+        path: /etc/containers/policy.json
+    - name: container-storage-runroot
+      hostPath:
+        path: /run/containers/storage
+    - name: container-storage-graphroot
+      hostPath:
+        path: /var/lib/containers/storage
+    
+  nodeName: kubenode01

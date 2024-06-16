@@ -12,10 +12,16 @@ import (
 func main() {
 	// get the message from kafka broker with infinite loop
 	for {
-		newPodName, nameSpace, nodeName, err := kafka.ConsumeMessage()
+		msg, err := kafka.ConsumeMessage()
 		if err != nil {
 			log.Error("unable to get the message from kafka")
+			continue
 		}
+		
+		newPodName := string(msg.Key)
+		nameSpace := string(msg.Value)[0:strings.Index(string(msg.Value), "/")]
+		nodeName := string(msg.Value)[strings.Index(string(msg.Value), "/")+1:]
+			
 		log.Info("newPodName ", newPodName, " nameSpace ", nameSpace, " nodeName ", nodeName)
 
 		if newPodName == "" || nameSpace == "" || nodeName == "" {
@@ -31,7 +37,13 @@ func main() {
 			clear:=handler.DeleteOldPod(nameSpace, oldPodName)
 			if !clear{
 				log.Error("unable to delete the old pod")
+			}else{
+				err:=kafka.CommitMessages(msg)
+				if err!=nil{
+					log.Error("unable to commit the message")
+				}
 			}
+
 		} else {
 			// TODO: handle the case that the pod is not alive
 			fmt.Println(state)

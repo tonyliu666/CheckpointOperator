@@ -39,12 +39,16 @@ func BuildahPodPushImage(index int,nodeName string, nameSpace string, checkpoint
 							// builah add the file under checkpointed-image to the new container
 							Args: []string{
 								"-c",
-								"newcontainer=$(buildah from scratch); buildah add $newcontainer " + checkpoint + "  /" + ";buildah config --annotation=io.kubernetes.cri-o.annotations.checkpoint.name="+podName+" $newcontainer; buildah commit $newcontainer " + podName + ":latest; buildah rm $newcontainer; buildah push --creds=myuser:mypasswd --tls-verify=false localhost/" + podName + ":latest " + registryIp + ":5000/" + podName + ":latest;",
+								"newcontainer=$(buildah from scratch); buildah add $newcontainer " + checkpoint + "  /" + ";buildah config --annotation=io.kubernetes.cri-o.annotations.checkpoint.name="+podName+" $newcontainer; buildah commit --format oci $newcontainer /var/lib/kubelet/oci-archive/"+podName+"; "+ "buildah rm $newcontainer;" ,
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "checkpointed-image",
 									MountPath: "/var/lib/kubelet/checkpoints/",
+								},
+								{
+									Name: "oci-archive",
+									MountPath: "/var/lib/kubelet/oci-archive/",
 								},
 							},
 						},
@@ -55,6 +59,15 @@ func BuildahPodPushImage(index int,nodeName string, nameSpace string, checkpoint
 							VolumeSource: corev1.VolumeSource{
 								HostPath: &corev1.HostPathVolumeSource{
 									Path: "/var/lib/kubelet/checkpoints/",
+								},
+							},
+						},
+						{
+							Name: "oci-archive",
+							VolumeSource: corev1.VolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{
+									Path: "/var/lib/kubelet/oci-archive/",
+									Type: func() *corev1.HostPathType { t := corev1.HostPathDirectoryOrCreate; return &t }(),
 								},
 							},
 						},
