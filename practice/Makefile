@@ -197,12 +197,14 @@ buildupwebhook: ## Run the webhook server for testing.
 	kubectl apply -f testwebhook/webhooktest.yaml
 .PHONY: upwebhook
 upwebhook: ## Run the webhook server for testing.
+	kubectl apply -f testwebhook/registry-role.yaml
 	kubectl apply -f testwebhook/webhooktest.yaml
 .PHONY: downwebhook
 downwebhook: ## Run the webhook server for testing.
 	kubectl delete -f testwebhook/webhooktest.yaml
 .PHONY: upregistry
 upregistry: ## Run the webhook server for testing.
+	kubectl create ns docker-registry
 	kubectl apply -f yaml/registry/daemonsets.yaml
 	
 .PHONY: downregistry

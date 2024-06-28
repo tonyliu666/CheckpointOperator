@@ -23,6 +23,7 @@ metadata:
   name: webhooktest
   labels:
     app: webhooktest
+  namespace: docker-registry
 spec:
   selector:
     app: webhooktest

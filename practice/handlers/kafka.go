@@ -22,11 +22,14 @@ func ConsumeMessage(nodeName string) ([]kafka.Message, error) {
 		Brokers: []string{bootstrapServers},
 		Topic:   topic,
 		GroupID: groupID,
+		// MaxWait: 10 * time.Second,
 	})
 
 	defer reader.Close()
 	messageList := []kafka.Message{}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	log.Log.Info("ready to fetch message", "nodeName", nodeName)
@@ -42,6 +45,7 @@ func ConsumeMessage(nodeName string) ([]kafka.Message, error) {
 				if ctx.Err() == context.DeadlineExceeded {
 					return messageList, nil
 				}
+				log.Log.Error(err, "Failed to fetch message")
 				continue
 			}
 
@@ -76,7 +80,7 @@ func ConsumeMessageFromDifferentTopics(nodeName string) ([]kafka.Message, error)
 
 	defer reader.Close()
 	messageList := []kafka.Message{}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	log.Log.Info("ready to fetch message", "topic", topic)
@@ -165,7 +169,7 @@ func ProduceMessageToDifferentTopics(key string, nameSpace string, nodeName stri
 	if err != nil {
 		return err
 	}
-	log.Log.Info("message sent", " key", key, " value", nameSpace+"/"+nodeName)
+	log.Log.Info("message sent", "key", key, "value", nameSpace+"/"+nodeName)
 
 	// Close the producer
 	if err := writer.Close(); err != nil {

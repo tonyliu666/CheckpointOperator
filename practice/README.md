@@ -35,6 +35,9 @@ make install
 make deploy IMG=<some-registry>/practice:tag
 ```
 
+> **NOTE**: After using make deploy command, then type this command on your master node:
+> kubectl -n practice-system  create secret generic kubelet-client-certs --from-file=client.crt=/etc/kubernetes/pki/apiserver-kubelet-client.crt --from-file=client.key=/etc/kubernetes/pki/apiserver-kubelet-client.key --kubeconfig=/home/ubuntu/.kube/config
+
 > **NOTE**: If you encounter RBAC errors, you may need to grant yourself cluster-admin 
 privileges or be logged in as admin.
 
@@ -65,6 +68,16 @@ make uninstall
 ```sh
 make undeploy
 ```
+
+#### If you encounter the too many request when pulling the image from dockerHub, then create the secret token: 
+
+kubectl create secret docker-registry regcred \
+  --docker-server="https://index.docker.io/v1/" \
+  --docker-username="<Username>" \
+  --docker-password="<AccessToken>" \
+  --docker-email="<Email>"
+
+> AccessToken: you can create this from the docker hub in the security tab
 
 ## Project Distribution
 

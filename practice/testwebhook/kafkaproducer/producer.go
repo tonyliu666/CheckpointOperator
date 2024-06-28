@@ -26,9 +26,11 @@ func ProduceMessage(key string, value string) error {
 		Value: []byte(value),
 	}
 
+	ctx := context.Background()
 	// Send the message
-	err := writer.WriteMessages(context.Background(), message)
+	err := writer.WriteMessages(ctx, message)
 	if err != nil {
+		log.Log.Error(err, "Failed to send message")
 		return err
 	}
 	fmt.Println("message sent", key, value)

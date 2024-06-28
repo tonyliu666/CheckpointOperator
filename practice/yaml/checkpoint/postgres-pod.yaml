@@ -17,4 +17,4 @@ spec:
         value: mypassword
   imagePullSecrets:
     - name: regcred
-  nodeName: kubenode01
+  nodeName: ip-15-0-12-104

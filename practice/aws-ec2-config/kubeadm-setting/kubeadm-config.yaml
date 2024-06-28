@@ -1,0 +1,28 @@
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: InitConfiguration
+localAPIEndpoint:
+  advertiseAddress: 172.31.17.234
+  bindPort: 6443
+nodeRegistration:
+  criSocket: "unix:///var/run/crio/crio.sock"
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+featureGates:
+  ContainerCheckpoint: true
+---
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: ClusterConfiguration
+kubernetesVersion: v1.28.0
+apiServer:
+  extraArgs:
+    feature-gates: "ContainerCheckpoint=true"
+controllerManager:
+  extraArgs:
+    feature-gates: "ContainerCheckpoint=true"
+scheduler:
+  extraArgs:
+    feature-gates: "ContainerCheckpoint=true"
+networking:
+  podSubnet: 192.168.0.0/16
+  serviceSubnet: 10.100.0.0/16

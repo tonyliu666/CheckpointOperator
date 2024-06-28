@@ -11,7 +11,8 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	// "sigs.k8s.io/controller-runtime/pkg/log"
+	log "github.com/sirupsen/logrus"
 )
 
 type Event struct {
@@ -61,16 +62,15 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 		// TODO: sent messages to kafka broker(kubeletResponse.Items[0],and what timestamp)
 		if e.Action == "push" {
 			// Print the event for debugging purposes
-			log.Log.Info("Event received", "event", e)
+			// log.Log.Info("Event received", "event", e)
+			log.Info("Event received", "event", e)
 			// if the mediaType is equal to application/vnd.oci.image.manifest.v1+json, then mean all the image content has been pushed
 			if e.Target.MediaType == "application/vnd.oci.image.manifest.v1+json" || e.Target.MediaType == "application/vnd.docker.distribution.manifest.v2+json" {
 				// hostIP is the data like this 10.244.16.247:5000, I want to get 10.244.16.247
 				registryPodIP := e.Request.Host
-				// fmt.Println("registryPodIP first: ", registryPodIP)
-				log.Log.Info("registryPodIP first:" , registryPodIP)
+				log.Info("registryPodIP first:" , registryPodIP)
 				registryPodIP = strings.Split(registryPodIP, ":")[0]
-				// fmt.Println("registryPodIP second: ", registryPodIP)
-				log.Log.Info("registryPodIP second:" , registryPodIP)
+				log.Info("registryPodIP second:" , registryPodIP)
 				// get the node name of the pod
 				nodeName, err := util.GetNodeNameByHostIP(registryPodIP, registryPodList)
 				// send messages to kafka broker
@@ -80,7 +80,7 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 				}
 				err = kafkaproducer.ProduceMessage(nodeName, e.Target.Repository)
 				if err != nil {
-					log.Log.Error(err, "unable to produce message to kafka broker")
+					log.Error(err, "unable to produce message to kafka broker")
 				}
 			}
 		}
@@ -93,7 +93,7 @@ func main() {
 	var err error
 	registryPodList, err = k8sclient.ListPods("docker-registry", "app=docker-registry")
 	if err != nil {
-		log.Log.Error(err, "unable to list pods")
+		log.Error(err, "unable to list pods")
 	}
 
 	http.HandleFunc("/webhook", webhookHandler)

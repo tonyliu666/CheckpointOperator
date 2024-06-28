@@ -29,3 +29,5 @@ go.work
 ssh_key/*
 yaml/kafka/cert
 yaml/kafka/cert-config
+testwebhook/create-pull-secret.sh
+docker-registry/*

@@ -79,7 +79,7 @@ func CheckpointPod(client *http.Client, address string) (*http.Response, error) 
 		return nil, err
 	}
 	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
-		logger.Error(err, "unable to checkpoint the container")
+		logger.Error(err, "your request is unauthorized")
 		return nil, fmt.Errorf("unable to checkpoint the container")
 	}
 	// check the response status code
