@@ -7,3 +7,7 @@
 > you can follow the following link to debug:
 
 https://strimzi.io/quickstarts/
+
+**If kafka broker comes into some issues like the error mentioned here *https://github.com/strimzi/strimzi-kafka-operator/issues/10040*,a.k.a the dns resolution issue, please try the following command:**
+
+> kubectl rollout restart deployment coredns -n kube-system 

@@ -71,7 +71,7 @@ make undeploy
 
 #### If you encounter the too many request when pulling the image from dockerHub, then create the secret token: 
 
-kubectl create secret docker-registry regcred \
+> kubectl create secret docker-registry regcred \
   --docker-server="https://index.docker.io/v1/" \
   --docker-username="<Username>" \
   --docker-password="<AccessToken>" \
