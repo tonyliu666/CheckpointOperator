@@ -24,4 +24,4 @@ spec:
           value: myuser
         - name: POSTGRES_PASSWORD
           value: mypassword
-      nodeName: kubenode01
+      nodeName: ip-172-31-17-234

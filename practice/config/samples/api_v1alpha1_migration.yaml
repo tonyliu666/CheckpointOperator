@@ -4,7 +4,7 @@ metadata:
   name: migration-sample
 spec:
   # TODO(user): Add fields here
-  podname: httpd
+  podname: postgresql-deployment-f97b98d7d-57tfb
   deployment: 
   namespace: default
   destination: ip-15-0-12-104

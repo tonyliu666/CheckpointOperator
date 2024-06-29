@@ -1,15 +1,27 @@
 apiVersion: v1 
 kind: Pod
 metadata: 
-  name: redis6
+  name: redis10
   namespace: default
 spec:
   containers:
-  - name: redis6
+  - name: redis10
     image: redis:latest
   imagePullSecrets:
     - name: regcred
-  nodeName: ip-172-31-23-29  
+  nodeName: ip-10-0-8-70
+# apiVersion: v1 
+# kind: Pod
+# metadata: 
+#   name: nginx12
+#   namespace: default
+# spec:
+#   containers:
+#   - name: nginx12
+#     image: nginx:latest
+#   imagePullSecrets:
+#     - name: regcred
+#   nodeName: ip-172-31-23-29  
 
   
 

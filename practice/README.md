@@ -1,16 +1,19 @@
-# practice
-// TODO(user): Add simple overview of use/purpose
+# CheckpointRestore Operator
+* This project is used for pod migration between different nodes. It utilize the CRIU(checpoint-restore in userspace) linux kernel module to keep the state of the running container, and then recreate a new pod with wrapping the checkpoint state on the new node. Therefore, the new pod could be successfully restored.
 
 ## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+1. MigrationController: it's used for monitoring the change of the state of CR(custom resoure). When the state of CR changes, then the controller will do the ongoing processes, like creating the corresponding client with given the certificate in /etc/kubernetes/pki folder in master node to enable the controller to access the kubelet checkpoint api which is located at **https://"workernode-ip"+10250**. The full command to access the kubelet api endpoint is **curl -X POST "https://localhost:10250/checkpoint/namespace/"podId"/"ContainerName"**
+2. DaemonSetController: It is for monitoring the private docker registry pod deployed on each node to examine whether the checkpointed image has been pushed to the registry pod which is located at the destination node. I deploy a **Strimzi**, kafka broker service deployed on Kubernetes on the cluster. When the checkpointed image pushed to the registry pod, the webhook of the registry will be sent to the event handler deployed as a pod on the same node as docker private registry pod. Then that handler will create a kafka message then send it to the kafka service broker to let the controller to receive. Finally the controller will create a new pod with the checkpointed image on the registry pod on the destination node. 
 
 ## Getting Started
 
-### Prerequisites
-- go version v1.21.0+
-- docker version 17.03+.
-- kubectl version v1.11.3+.
-- Access to a Kubernetes v1.11.3+ cluster.
+### Environments
+- go version 1.22.4
+- docker version 24.0.5
+- kubectl version v1.28.9+.
+- Access to a Kubernetes v1.28.9+ cluster.
+
+> **Notes** the checkpoint restore funcationality only supports the kubernetes v1.25.0+ version
 
 ### To Deploy on the cluster
 **Build and push your image to the location specified by `IMG`:**
@@ -46,6 +49,7 @@ You can apply the samples (examples) from the config/sample:
 
 ```sh
 kubectl apply -k config/samples/
+kubectl apply -f config/samples/api_v1alpha1_migration.yaml
 ```
 
 >**NOTE**: Ensure that the samples has default values to test it out.

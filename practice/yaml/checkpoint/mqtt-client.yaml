@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mqtt-client-script
+data:
+  mqtt_client.py: |
+    import paho.mqtt.client as mqtt
+    import time
+
+    def on_connect(client, userdata, flags, rc):
+        print("Connected with result code " + str(rc))
+        client.subscribe("test/topic")
+
+    def on_message(client, userdata, msg):
+        print(msg.topic + " " + str(msg.payload))
+
+    client = mqtt.Client()
+    client.on_connect = on_connect
+    client.on_message = on_message
+
+    client.connect("mosquitto", 1883, 60)
+    print("Connected to mosquitto")
+    client.loop_start()
+    print("Listening for messages")
+
+    while True:
+        time.sleep(1)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mqtt-client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mqtt-client
+  template:
+    metadata:
+      labels:
+        app: mqtt-client
+    spec:
+      containers:
+      - name: mqtt-client
+        image: python:3.9
+        volumeMounts:
+        - name: mqtt-client-script
+          mountPath: /app
+        command: ["sh", "-c"]
+        args: ["pip install paho-mqtt && python /app/mqtt_client.py"]
+      volumes:
+      - name: mqtt-client-script
+        configMap:
+          name: mqtt-client-script

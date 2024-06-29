@@ -1,0 +1,11 @@
+apiVersion: v1 
+kind: Pod
+metadata:
+  name: mongodb
+spec:
+  containers:
+  - name: mongodb
+    image: mongo:latest
+  imagePullSecrets:
+    - name: regcred
+  nodeName: ip-172-31-23-29
