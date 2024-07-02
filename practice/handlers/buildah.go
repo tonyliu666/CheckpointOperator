@@ -7,91 +7,130 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	util "tony123.tw/util"
+	"tony123.tw/util/config"
 )
 
-func BuildahPodPushImage(index int,nodeName string, nameSpace string, checkpoint string, registryIp string) error {
+func intUtility(x int64) *int64 {
+	return &x
+}
+func boolUtility(x bool) *bool {
+	return &x
+}
+
+func BuildahPodPushImage(originPodName string, nameSpace string, checkpoint string, srcNodeIP string, dstNode string) error {
+	// please follow the given yaml contents to create a specific job
+	fileName := util.ModifyCheckpointToFileName(checkpoint)
 	podName := util.ModifyCheckpointToImageName(checkpoint)
+	log.Log.Info("use pvc name", "pvc", config.PvcSourceMap[srcNodeIP].Name)
+	log.Log.Info("checkpoint name", "checkpoint", checkpoint)
+	log.Log.Info("use file name", "file", fileName)
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "buildah-job-"+fmt.Sprintf("%d", index),
-			// TODO: change the name if I want to sent all the images of deployment to the registry
+			Name: fmt.Sprintf("buildah-job-%s", originPodName),
 		},
-		// set ttlSecondsAfterFinished to 30 seconds
 		Spec: batchv1.JobSpec{
 			TTLSecondsAfterFinished: func() *int32 { i := int32(20); return &i }(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"app": "buildah",
-					},
+					Name: fmt.Sprintf("buildah-pod-%s", originPodName),
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:  "buildah",
-							Image: "quay.io/buildah/stable",
-							SecurityContext: &corev1.SecurityContext{
-								Privileged: func() *bool { b := true; return &b }(),
-							},
-							Command: []string{"/bin/bash"},
-							// builah add the file under checkpointed-image to the new container
+							Name:    "buildah",
+							Image:   "quay.io/buildah/stable",
+							Command: []string{"/bin/sh"},
 							Args: []string{
 								"-c",
-								"newcontainer=$(buildah from scratch); buildah add $newcontainer " + checkpoint + "  /" + ";buildah config --annotation=io.kubernetes.cri-o.annotations.checkpoint.name="+podName+" $newcontainer; buildah commit $newcontainer " + podName + ":latest; buildah rm $newcontainer; buildah push --creds=myuser:mypasswd --tls-verify=false localhost/" + podName + ":latest " + registryIp + ":5000/" + podName + ":latest;",
+								fmt.Sprintf("newcontainer=$(buildah from scratch); if [ -f /mnt/checkpoints/%s ]; then buildah add $newcontainer /mnt/checkpoints/%s /; buildah config --annotation=io.kubernetes.cri-o.annotations.checkpoint.name=migration-sample $newcontainer; buildah commit $newcontainer  %s:latest; buildah rm $newcontainer;  else echo 'File not found'; exit 1; fi",  fileName, fileName,podName ),
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
-									Name:      "checkpointed-image",
-									MountPath: "/var/lib/kubelet/checkpoints/",
+									MountPath: "/mnt/checkpoints",
+									Name:      "checkpoint-storage",
 								},
+								{
+									MountPath: "/var/lib/containers/storage",
+									Name:      "container-storage-graphroot",
+								},
+								{
+									MountPath: "/run/containers/storage",
+									Name:      "container-storage-runroot",
+								},
+								{
+									MountPath: "/etc/containers/storage.conf",
+									Name:      "container-storage-conf",
+								},
+								{
+									MountPath: "/etc/containers/policy.json",
+									Name:      "container-policy",
+								},
+							},
+							SecurityContext: &corev1.SecurityContext{
+								Privileged: boolUtility(true),
+								RunAsUser:  intUtility(0),
+								RunAsGroup: intUtility(0),
 							},
 						},
 					},
 					Volumes: []corev1.Volume{
 						{
-							Name: "checkpointed-image",
+							Name: "checkpoint-storage",
+							VolumeSource: corev1.VolumeSource{
+								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+									ClaimName: config.PvcSourceMap[srcNodeIP].Name,
+								},
+							},
+						},
+						{
+							Name: "container-storage-graphroot",
 							VolumeSource: corev1.VolumeSource{
 								HostPath: &corev1.HostPathVolumeSource{
-									Path: "/var/lib/kubelet/checkpoints/",
+									Path: "/var/lib/containers/storage",
+								},
+							},
+						},
+						{
+							Name: "container-storage-runroot",
+							VolumeSource: corev1.VolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{
+									Path: "/run/containers/storage",
+								},
+							},
+						},
+						{
+							Name: "container-storage-conf",
+							VolumeSource: corev1.VolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{
+									Path: "/etc/containers/storage.conf",
+								},
+							},
+						},
+						{
+							Name: "container-policy",
+							VolumeSource: corev1.VolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{
+									Path: "/etc/containers/policy.json",
 								},
 							},
 						},
 					},
-					NodeName:      nodeName,
-					RestartPolicy: corev1.RestartPolicyNever, // Ensure the job doesn't restart
+					NodeName: dstNode,
+					RestartPolicy: corev1.RestartPolicyOnFailure,
 				},
 			},
 		},
 	}
-
+	// create the job in the given namespace
 	clientset, err := util.CreateClientSet()
 	if err != nil {
 		return err
 	}
 	_, err = clientset.BatchV1().Jobs(nameSpace).Create(context.TODO(), job, metav1.CreateOptions{})
-	return err
-}
-
-
-func DeleteBuildahJobs(clientset *kubernetes.Clientset) error {
-	//check the job existed in docker-registry namespace
-	jobs, err := clientset.BatchV1().Jobs("docker-registry").List(context.TODO(), metav1.ListOptions{})
-	// delete the all the completed jobs in jobs
-	if err != nil || len(jobs.Items) == 0 {
-		return nil
-	}
 	if err != nil {
 		return err
-	}
-	backgroundDeletion := metav1.DeletePropagationBackground
-	for _, job := range jobs.Items {
-		if job.Status.Succeeded == 1 {
-			clientset.BatchV1().Jobs("docker-registry").Delete(context.TODO(), job.Name, metav1.DeleteOptions{
-				PropagationPolicy: &backgroundDeletion, 
-			})
-		}
 	}
 	return nil
 }

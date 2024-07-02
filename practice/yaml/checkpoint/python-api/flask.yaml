@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flask-server
+  template:
+    metadata:
+      labels:
+        app: flask-server
+    spec:
+      containers:
+      - name: flask-server
+        image: tonyliu666/python-server:latest
+        ports:
+        - containerPort: 5000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flask-server
+spec:
+  selector:
+    app: flask-server
+  ports:
+  - protocol: TCP
+    port: 5000
+    targetPort: 5000
+--- 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask-client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flask-client
+  template:
+    metadata:
+      labels:
+        app: flask-client
+    spec:
+      containers:
+      - name: flask-client
+        image: tonyliu666/python-client:latest
+        env:
+        - name: SERVER_URL
+          value: "http://flask-server:5000/hello"
+

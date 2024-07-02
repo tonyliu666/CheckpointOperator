@@ -3,9 +3,11 @@ package util
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 func DeletePod(podName string) error {
@@ -19,24 +21,33 @@ func DeletePod(podName string) error {
 	}
 	return nil 
 }
-func CheckPodStatus(podName string,state string, checkingTime int) (error) {
+func CheckPodStatus(originPodName string,state string,namespace string, checkingTime int) (error) {
 	clientset, err := CreateClientSet()
 	if err != nil {
 		return fmt.Errorf("unable to create clientset: %w", err)
 	}
 	now := time.Now()
+	
+	log.Log.Info("origin pod name", "originPodName", originPodName)
 	for {
 		// check pod status is running within 30 seconds
 		if time.Since(now) > time.Duration(checkingTime) * time.Second {
 			return fmt.Errorf("pod is not in running state within 30 seconds")
 		}
-		pod, err := clientset.CoreV1().Pods("default").Get(context.TODO(), podName, metav1.GetOptions{})
+		pods, err := clientset.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
+		// check the buildah pod in migration namespace whose prefix of pod name is buildah-job
 		if err != nil {
+			log.Log.Error(err, "unable to list the pods in migration namespace")
 			return fmt.Errorf("unable to get pod: %w", err)
 		}
-		if string(pod.Status.Phase) == state {
-			break
+
+		for _, pod := range pods.Items {
+			log.Log.Info("pod status", "pod", pod.Name, "status", pod.Status.Phase)
+			// check the suffix of pod name is the same as the origin pod name, ex: buildah-job-nginx and originPodName is nginx
+			if  strings.Contains(pod.Name, originPodName) && string(pod.Status.Phase) == state {
+				log.Log.Info("pod is in in state", "pod", pod.Name)
+				return nil
+			}
 		}
 	}
-	return nil
 }

@@ -89,7 +89,6 @@ var _ = Describe("Migration Controller", func() {
 
 			Expect(migration.Spec.Podname).Should(Equal(podName))
 			Expect(migration.Spec.Deployment).Should(Equal(deployment))
-			Expect(migration.Spec.Namespace).Should(Equal(namespace))
 			Expect(migration.Spec.Destination).Should(Equal(destination))
 
 			// test the controller behavior

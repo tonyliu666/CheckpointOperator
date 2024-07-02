@@ -19,5 +19,4 @@ func GetPodHostIP(pod *corev1.Pod, namespace string) (string, error) {
 	hostIP := pod.Status.HostIP
 	// return the service domain name
 	return fmt.Sprintf("%s:%s", hostIP, hostPort), nil
-
 }

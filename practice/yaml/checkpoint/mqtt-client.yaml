@@ -7,14 +7,15 @@ data:
     import paho.mqtt.client as mqtt
     import time
 
-    def on_connect(client, userdata, flags, rc):
+    def on_connect(client, userdata, flags, rc, properties=None):
         print("Connected with result code " + str(rc))
         client.subscribe("test/topic")
 
     def on_message(client, userdata, msg):
         print(msg.topic + " " + str(msg.payload))
-
-    client = mqtt.Client()
+    
+    client_id = "mqtt-client"
+    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id)
     client.on_connect = on_connect
     client.on_message = on_message
 

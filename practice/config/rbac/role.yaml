@@ -19,7 +19,14 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - pods
+  - nodes
+  verbs:
+  - get
+  - list
+- apiGroups:
+  - ""
+  resources:
+  - persistentvolumeclaims
   verbs:
   - create
   - delete
@@ -31,7 +38,7 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - services
+  - persistentvolumes
   verbs:
   - create
   - delete
@@ -41,9 +48,9 @@ rules:
   - update
   - watch
 - apiGroups:
-  - api.my.domain
+  - ""
   resources:
-  - daemonsets
+  - pods
   verbs:
   - create
   - delete
@@ -52,20 +59,6 @@ rules:
   - patch
   - update
   - watch
-- apiGroups:
-  - api.my.domain
-  resources:
-  - daemonsets/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - api.my.domain
-  resources:
-  - daemonsets/status
-  verbs:
-  - get
-  - patch
-  - update
 - apiGroups:
   - api.my.domain
   resources:
@@ -92,30 +85,6 @@ rules:
   - get
   - patch
   - update
-- apiGroups:
-  - apps
-  resources:
-  - daemonsets
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apps
-  resources:
-  - deployments
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
 - apiGroups:
   - batch
   resources:
