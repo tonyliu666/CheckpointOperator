@@ -35,6 +35,7 @@ handlers/*.tar
 handlers/flask
 handlers/counter
 handlers/checkpoint 
-handlers/count 
+handlers/count/*
+
 
 
