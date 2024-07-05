@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: postgrespod
+  name: postgrespo
 spec:
   containers:
   - name: postgres
@@ -17,4 +17,4 @@ spec:
         value: mypassword
   imagePullSecrets:
     - name: regcred
-  nodeName: ip-15-0-12-104
+  nodeName: workernode02

@@ -23,15 +23,12 @@ func BuildahPodPushImage(originPodName string, nameSpace string, checkpoint stri
 	// please follow the given yaml contents to create a specific job
 	fileName := util.ModifyCheckpointToFileName(checkpoint)
 	podName := util.ModifyCheckpointToImageName(checkpoint)
-	log.Log.Info("use pvc name", "pvc", config.PvcSourceMap[srcNodeIP].Name)
-	log.Log.Info("checkpoint name", "checkpoint", checkpoint)
-	log.Log.Info("use file name", "file", fileName)
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("buildah-job-%s", originPodName),
 		},
 		Spec: batchv1.JobSpec{
-			TTLSecondsAfterFinished: func() *int32 { i := int32(20); return &i }(),
+			TTLSecondsAfterFinished: func() *int32 { i := int32(3); return &i }(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: fmt.Sprintf("buildah-pod-%s", originPodName),
@@ -44,7 +41,7 @@ func BuildahPodPushImage(originPodName string, nameSpace string, checkpoint stri
 							Command: []string{"/bin/sh"},
 							Args: []string{
 								"-c",
-								fmt.Sprintf("newcontainer=$(buildah from scratch); if [ -f /mnt/checkpoints/%s ]; then buildah add $newcontainer /mnt/checkpoints/%s /; buildah config --annotation=io.kubernetes.cri-o.annotations.checkpoint.name=migration-sample $newcontainer; buildah commit $newcontainer  %s:latest; buildah rm $newcontainer;  else echo 'File not found'; exit 1; fi",  fileName, fileName,podName ),
+								fmt.Sprintf("newcontainer=$(buildah from scratch); if [ -f /mnt/checkpoints/%s ]; then buildah add $newcontainer /mnt/checkpoints/%s /; buildah config --annotation=io.kubernetes.cri-o.annotations.checkpoint.name=%s $newcontainer; buildah commit --log-level=debug $newcontainer  %s:latest; buildah rm $newcontainer;  else echo 'File not found'; exit 1; fi",  fileName, fileName,podName,podName),
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
@@ -132,5 +129,6 @@ func BuildahPodPushImage(originPodName string, nameSpace string, checkpoint stri
 	if err != nil {
 		return err
 	}
+	log.Log.Info("Job created successfully", "jobName", job.Name)
 	return nil
 }

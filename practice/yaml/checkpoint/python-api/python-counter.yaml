@@ -1,0 +1,14 @@
+apiVersion: v1 
+kind: Pod
+metadata: 
+  name: python-counter
+  namespace: default
+spec:
+  containers:
+  - name: python-counter
+    image: python
+    command: ["sleep"]
+    args: ["3600"]
+  imagePullSecrets:
+    - name: regcred
+  nodeName: workernode01

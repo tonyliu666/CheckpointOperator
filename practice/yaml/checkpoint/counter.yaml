@@ -7,4 +7,17 @@ spec:
   containers:
   - name: counter
     image: quay.io/adrianreber/counter:blog
+  nodeName: workernode01
+    
+  
+# apiVersion: v1
+# kind: Pod
+# metadata:
+#   name: machine
+#   namespace: default
+# spec:
+#   containers:
+#   - name: machine
+#     image: localhost/checkpoint-machine-learning
+#   nodeName: workernode02
   

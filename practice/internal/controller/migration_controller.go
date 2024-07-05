@@ -292,7 +292,7 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 				}
 				log.Log.Info("got response", "response", kubeletResponse, "body", string(body))
 
-				// get the destination node ip address
+				// get the source node ip address
 				srcNodeIP, err := util.GetNodeIP(pod.Spec.NodeName)
 				if err != nil {
 					log.Log.Error(err, "unable to get the node ip address")

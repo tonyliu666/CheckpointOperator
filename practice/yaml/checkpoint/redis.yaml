@@ -1,25 +1,25 @@
-# apiVersion: v1 
-# kind: Pod
-# metadata: 
-#   name: redis12
-#   namespace: default
-# spec:
-#   containers:
-#   - name: redis12
-#     image: redis:latest
-#   imagePullSecrets:
-#     - name: regcred
-#   nodeName: workernode01
 apiVersion: v1 
 kind: Pod
 metadata: 
-  name: nginx13
+  name: redis1234
   namespace: default
 spec:
   containers:
-  - name: nginx13
-    image: localhost/checkpoint-nginx2:latest
+  - name: redis12345
+    image: redis:latest
+  imagePullSecrets:
+    - name: regcred
   nodeName: workernode01
+# apiVersion: v1 
+# kind: Pod
+# metadata: 
+#   name: nginx13
+#   namespace: default
+# spec:
+#   containers:
+#   - name: nginx13
+#     image: localhost/checkpoint-nginx2:latest
+#   nodeName: workernode01
 
   
 

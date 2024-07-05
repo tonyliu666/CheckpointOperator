@@ -9,4 +9,4 @@ spec:
     image: tonyliu666/transformer:latest
   imagePullSecrets:
     - name: regcred
-  nodeName: ip-172-31-23-29
+  nodeName: workernode01

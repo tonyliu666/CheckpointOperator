@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -19,21 +18,20 @@ func DeletePod(podName string) error {
 	if err != nil {
 		return fmt.Errorf("unable to delete pod: %w", err)
 	}
-	return nil 
+	return nil
 }
-func CheckPodStatus(originPodName string,state string,namespace string, checkingTime int) (error) {
+
+func CheckPodStatus(originPodName string,state string,namespace string) (error) {
 	clientset, err := CreateClientSet()
 	if err != nil {
 		return fmt.Errorf("unable to create clientset: %w", err)
 	}
-	now := time.Now()
+	
 	
 	log.Log.Info("origin pod name", "originPodName", originPodName)
 	for {
 		// check pod status is running within 30 seconds
-		if time.Since(now) > time.Duration(checkingTime) * time.Second {
-			return fmt.Errorf("pod is not in running state within 30 seconds")
-		}
+		
 		pods, err := clientset.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
 		// check the buildah pod in migration namespace whose prefix of pod name is buildah-job
 		if err != nil {

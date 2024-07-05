@@ -24,4 +24,4 @@ spec:
           value: myuser
         - name: POSTGRES_PASSWORD
           value: mypassword
-      nodeName: ip-172-31-17-234
+      nodeName: workernode01

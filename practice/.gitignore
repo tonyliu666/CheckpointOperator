@@ -31,3 +31,10 @@ yaml/kafka/cert
 yaml/kafka/cert-config
 testwebhook/create-pull-secret.sh
 docker-registry/*
+handlers/*.tar
+handlers/flask
+handlers/counter
+handlers/checkpoint 
+handlers/count 
+
+

@@ -3,6 +3,8 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -10,17 +12,24 @@ import (
 	util "tony123.tw/util"
 )
 
+// isImageNotFoundError checks if the error is due to the image not being found
+func isImageNotFoundError(err error) bool {
+	// Check if the error message or type indicates that the image is not found
+	// This is an example and may need to be adjusted based on the actual error message and type
+	return strings.Contains(err.Error(), "ErrImagePull") || strings.Contains(err.Error(), "ImagePullBackOff")
+}
+
 func DeployPodOnNewNode(pod *corev1.Pod, nameSpace string, dstNode string) error {
 	// deploy a new pod on the destination node
 	migratePod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "checkpoint-"+pod.Name,
+			Name: "checkpoint-" + pod.Name,
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
-					Name:  "checkpoint-"+pod.Name,
-					Image: "checkpoint-" + pod.Name + ":latest",
+					Name:  "checkpoint-" + pod.Name,
+					Image: "localhost/"+"checkpoint-" + pod.Name + ":latest",
 				},
 			},
 			NodeName: dstNode,
@@ -33,18 +42,30 @@ func DeployPodOnNewNode(pod *corev1.Pod, nameSpace string, dstNode string) error
 		return fmt.Errorf("unable to create clientset: %w", err)
 	}
 	// check the buildah pod in migration namespace whose state is completed
-	err = util.CheckPodStatus(pod.Name,"Succeeded","migration", 30)
+	err = util.CheckPodStatus(pod.Name, "Succeeded", "migration")
 	if err != nil {
 		log.Log.Error(err, "unable to check pod status")
 		return fmt.Errorf("unable to check pod status: %w", err)
 	}
 
-	// TODO: replace default namespace with the namespace of the pod
-	newpod, err := clientset.CoreV1().Pods(nameSpace).Create(context.TODO(), migratePod, metav1.CreateOptions{})
+	// TODO: recreate a pod if the image is not found
+	newpod, err := clientset.CoreV1().Pods(nameSpace).Create(context.Background(), migratePod, metav1.CreateOptions{})
 	if err != nil {
-		log.Log.Error(err, "unable to deploy new pod")
-		return fmt.Errorf("unable to create pod: %w", err)
+		if isImageNotFoundError(err) {
+			log.Log.Error(err, "Image not found, retrying to create the pod")
+			// Optionally, you can add a delay before retrying
+			time.Sleep(5 * time.Second)
+			newpod, err = clientset.CoreV1().Pods(nameSpace).Create(context.Background(), migratePod, metav1.CreateOptions{})
+			if err != nil {
+				log.Log.Error(err, "Failed to create the pod after retry")
+				return err
+			}
+		} else {
+			log.Log.Error(err, "Failed to create the pod")
+			return err
+		}
 	}
-	log.Log.Info("new pod created", "pod", newpod.Name)
+	log.Log.Info("Pod created successfully", "podName", newpod.Name)
+
 	return nil
 }
