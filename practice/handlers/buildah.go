@@ -42,6 +42,7 @@ func BuildahPodPushImage(originPodName string, nameSpace string, checkpoint stri
 							Args: []string{
 								"-c",
 								fmt.Sprintf("newcontainer=$(buildah from scratch); if [ -f /mnt/checkpoints/%s ]; then buildah add $newcontainer /mnt/checkpoints/%s /; buildah config --annotation=io.kubernetes.cri-o.annotations.checkpoint.name=%s $newcontainer; buildah commit --log-level=debug $newcontainer  %s:latest; buildah rm $newcontainer;  else echo 'File not found'; exit 1; fi",  fileName, fileName,podName,podName),
+								
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
@@ -57,7 +58,7 @@ func BuildahPodPushImage(originPodName string, nameSpace string, checkpoint stri
 									Name:      "container-storage-runroot",
 								},
 								{
-									MountPath: "/etc/containers/storage.conf",
+									MountPath: "/etc/containers/registries.conf",
 									Name:      "container-storage-conf",
 								},
 								{
@@ -101,7 +102,7 @@ func BuildahPodPushImage(originPodName string, nameSpace string, checkpoint stri
 							Name: "container-storage-conf",
 							VolumeSource: corev1.VolumeSource{
 								HostPath: &corev1.HostPathVolumeSource{
-									Path: "/etc/containers/storage.conf",
+									Path: "/etc/containers/registries.conf",
 								},
 							},
 						},

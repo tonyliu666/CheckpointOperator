@@ -68,7 +68,7 @@ func DeployPodOnNewNode(pod *corev1.Pod, nameSpace string, dstNode string) error
 		return fmt.Errorf("unable to check pod status: %w", err)
 	}
 
-	// TODO: recreate a pod if the image is not found
+	// TODO: create a pod on the destination node when the checkpoint image has been pushed to the destination node
 	newpod, err := clientset.CoreV1().Pods(nameSpace).Create(context.Background(), migratePod, metav1.CreateOptions{})
 	if err != nil {
 		if isImageNotFoundError(err) {

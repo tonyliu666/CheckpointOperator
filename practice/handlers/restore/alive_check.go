@@ -1,11 +1,11 @@
 // this is for checking the new pod is alive on new node or not
 
-package handler
+package restore
 
 import (
 	"context"
-	"restore-daemon/k8sclient"
-
+	
+	util "tony123.tw/util"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	log "github.com/sirupsen/logrus"
@@ -13,7 +13,7 @@ import (
 
 func AliveCheck(nameSpace string, newPodName string, nodeName string) (bool, v1.PodPhase) {
 	// get the message from kafka
-	clientset, err := k8sclient.CreateClientSet()
+	clientset, err := util.CreateClientSet()
 	if err != nil {
 		log.Error("unable to create the clientset")
 	}

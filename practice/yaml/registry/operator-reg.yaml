@@ -1,0 +1,31 @@
+#### build for your own registry to store your operator image
+apiVersion: v1 
+kind: Pod
+metadata: 
+  name: registry
+  labels: 
+    app: registry
+spec: 
+  containers: 
+    - image: registry:latest
+      name: registry
+      ports: 
+        - containerPort: 5000
+  imagePullSecrets:
+    - name: regcred
+
+--- 
+# set the nodeport service to expose the registry
+apiVersion: v1
+kind: Service
+metadata:
+  name: registry-service
+spec:
+  selector:
+    app: registry
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
+  type: NodePort
+

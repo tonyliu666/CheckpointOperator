@@ -55,15 +55,17 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: postgres112
+  # name: postgres112
+  name: mongodb11111
 spec:
   containers:
   # - image: tonyliu666/checkpoint-image:latest
   # - image: tonyliu666/redis:latest
   # - image: tonyliu666/newhttpd:latest
   # - image: tonyliu666/mosquit:latest
-  - image: tonyliu666/postgres:latest 
-    name: postgres112
-  nodeName: workernode01
+  # - image: tonyliu666/newhttpd:latest
+  - image: localhost/checkpoint-mongodb
+    name: mongodb
+  nodeName: workernode02
   imagePullSecrets:
     - name: regcred

@@ -8,3 +8,5 @@ spec:
     spec:
       containers:
       - name: manager
+      imagePullSecrets:
+      - name: regcred

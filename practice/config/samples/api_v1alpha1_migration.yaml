@@ -4,10 +4,10 @@ metadata:
   name: migration-sample
 spec:
   # TODO(user): Add fields here
-  podname: redis11
+  podname: machine-learning
   deployment: 
   namespace: default
-  destination: workernode01
+  destination: workernode02
 
   # Optional field: deployment
   # Users can choose to include it or leave it empty
