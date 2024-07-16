@@ -1,9 +1,69 @@
+# apiVersion: v1
+# kind: Pod
+# metadata:
+#   name: newone2
+# spec:
+#   containers:
+#   - image: localhost/newone:latest
+#     name: new
+#   nodeName: workernode02
+# apiVersion: v1
+# kind: Pod
+# metadata:
+#   name: mosquitto-new
+# spec:
+#   containers:
+#   - image: docker.io/tonyliu666/mosquitto:latest
+#     name: mosquitto
+#   imagePullSecrets:
+#   - name: regcred
+#   nodeName: workernode02
+# apiVersion: v1
+# kind: Pod
+# metadata:
+#   name: flask-new
+# spec:
+#   containers:
+#   - image: docker.io/tonyliu666/flask:latest
+#     name: flask
+#   nodeName: workernode02
+#   imagePullSecrets:
+#     - name: k8s
+# apiVersion: v1
+# kind: Pod
+# metadata:
+#   name: httpd123
+# spec:
+#   containers:
+#   - image: docker.io/tonyliu666/httpd:latest
+#     name: httpd
+#   nodeName: workernode02
+#   imagePullSecrets:
+#     - name: k8s
+# apiVersion: v1
+# kind: Pod
+# metadata:
+#   name: httpd3
+# spec:
+#   containers:
+#   # - image: tonyliu666/checkpoint-image:latest
+#   - image: tonyliu666/httpd:latest
+#     name: httpd
+#   nodeName: workernode01
+#   imagePullSecrets:
+#     - name: regcred
 apiVersion: v1
 kind: Pod
 metadata:
-  name: transfor
+  name: postgres112
 spec:
   containers:
-  - image: localhost/transformer:latest
-    name: transfor
+  # - image: tonyliu666/checkpoint-image:latest
+  # - image: tonyliu666/redis:latest
+  # - image: tonyliu666/newhttpd:latest
+  # - image: tonyliu666/mosquit:latest
+  - image: tonyliu666/postgres:latest 
+    name: postgres112
   nodeName: workernode01
+  imagePullSecrets:
+    - name: regcred

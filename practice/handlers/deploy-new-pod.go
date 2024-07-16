@@ -19,6 +19,26 @@ func isImageNotFoundError(err error) bool {
 	return strings.Contains(err.Error(), "ErrImagePull") || strings.Contains(err.Error(), "ImagePullBackOff")
 }
 
+func OriginalImageChecker(pod *corev1.Pod, dstNode string) error {
+	imageIDList := []string{}
+	for _, containerStatus := range pod.Status.ContainerStatuses {
+		imageID := containerStatus.ImageID
+		imageIDList = append(imageIDList, imageID)
+	}
+
+	// check the image id of the original pod on the destination node
+	err := util.CheckImageIDExistOnNode(imageIDList, dstNode)
+	if err != nil {
+		log.Log.Error(err, "unable to check image id")
+		return fmt.Errorf("unable to check image id: %w", err)
+	}
+	// check the check-image-id job is finished or not
+	// set the context for the time limit of the job
+
+	err = util.CheckJobStatus("check-image-id", "Succeeded")
+	return nil
+}
+
 func DeployPodOnNewNode(pod *corev1.Pod, nameSpace string, dstNode string) error {
 	// deploy a new pod on the destination node
 	migratePod := &corev1.Pod{
@@ -29,7 +49,7 @@ func DeployPodOnNewNode(pod *corev1.Pod, nameSpace string, dstNode string) error
 			Containers: []corev1.Container{
 				{
 					Name:  "checkpoint-" + pod.Name,
-					Image: "localhost/"+"checkpoint-" + pod.Name + ":latest",
+					Image: "localhost/" + "checkpoint-" + pod.Name + ":latest",
 				},
 			},
 			NodeName: dstNode,

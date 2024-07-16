@@ -11,8 +11,8 @@ spec:
       - "-c"
       - |
         newcontainer=$(buildah from scratch); \
-        if [ -f /mnt/checkpoints/checkpoint-redis12.tar ]; then \
-          buildah add $newcontainer /mnt/checkpoints/checkpoint-redis12.tar /; \
+        if [ -f /mnt/checkpoints/ ]; then \
+          buildah add $newcontainer /mnt/checkpoints/checkpoint-nginx_default-nginx-2024-07-02T09:23:00Z.tar /; \
           buildah config --annotation=io.kubernetes.cri-o.annotations.checkpoint.name=migration-sample $newcontainer; \
           buildah commit $newcontainer  newcontainer:latest; \
           buildah rm $newcontainer; \
@@ -55,3 +55,4 @@ spec:
     hostPath:
       path: /etc/containers/policy.json
   restartPolicy: Always
+  nodeName: workernode1

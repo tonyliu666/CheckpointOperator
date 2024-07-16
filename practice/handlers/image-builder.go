@@ -30,7 +30,6 @@ func ComputeSha256(reader io.Reader) string {
 func Gzip(reader io.Reader, target io.Writer) error {
 	archiver := gzip.NewWriter(target)
 	defer archiver.Close()
-
 	_, err := io.Copy(archiver, reader)
 	return err
 }

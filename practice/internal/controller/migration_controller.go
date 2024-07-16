@@ -216,7 +216,6 @@ func CheckpointDeployment(ctx context.Context, r *MigrationReconciler, migration
 		return err
 	}
 	return nil
-
 }
 
 func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration *apiv1alpha1.Migration, listOptions *client.ListOptions) error {
@@ -307,8 +306,16 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 					return err
 				}
 			}
+			// before deploying a new pod on the new node,I should examine whether the newnode has the original image
+			err :=handlers.OriginalImageChecker(&pod, migration.Spec.Destination)
+			if err != nil {
+				log.Log.Error(err, "the original image doesn't exist on the destination node")
+				return err
+			}
+			
+
 			// ready to deploy the pod on the destination node
-			err := handlers.DeployPodOnNewNode(&pod, migration.Spec.Namespace, migration.Spec.Destination)
+			err = handlers.DeployPodOnNewNode(&pod, migration.Spec.Namespace, migration.Spec.Destination)
 			if err != nil {
 				log.Log.Error(err, "unable to deploy the pod on the destination")
 				return err

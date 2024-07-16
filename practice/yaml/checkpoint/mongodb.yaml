@@ -8,4 +8,4 @@ spec:
     image: mongo:latest
   imagePullSecrets:
     - name: regcred
-  nodeName: ip-172-31-23-29
+  nodeName: workernode01
