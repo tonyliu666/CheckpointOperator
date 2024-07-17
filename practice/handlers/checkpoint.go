@@ -63,11 +63,11 @@ func CheckpointPod(client *http.Client, address string) (*http.Response, error) 
 	req, err := http.NewRequest("POST", fullURL, requestBody)
 	if err != nil {
 		fmt.Println("Error creating request:", err)
-		return nil,err
+		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-    // Send the request
-    resp, err := client.Do(req)
+	// Send the request
+	resp, err := client.Do(req)
 	// set the timeout for kubelet checkpoint api, the timeout within the query
 	// resp, err := client.Post(address, "application/json", strings.NewReader("{}"))
 	CheckpointEndTime := time.Now()

@@ -17,9 +17,9 @@ func DeletePod(podName string) error {
 	if err != nil {
 		return fmt.Errorf("unable to delete pod: %w", err)
 	}
-	return nil 
+	return nil
 }
-func CheckPodStatus(podName string,state string, checkingTime int) (error) {
+func CheckPodStatus(podName string, state string, checkingTime int) error {
 	clientset, err := CreateClientSet()
 	if err != nil {
 		return fmt.Errorf("unable to create clientset: %w", err)
@@ -27,7 +27,7 @@ func CheckPodStatus(podName string,state string, checkingTime int) (error) {
 	now := time.Now()
 	for {
 		// check pod status is running within 30 seconds
-		if time.Since(now) > time.Duration(checkingTime) * time.Second {
+		if time.Since(now) > time.Duration(checkingTime)*time.Second {
 			return fmt.Errorf("pod is not in running state within 30 seconds")
 		}
 		pod, err := clientset.CoreV1().Pods("default").Get(context.TODO(), podName, metav1.GetOptions{})

@@ -119,7 +119,7 @@ var _ = AfterSuite(func() {
 	cancel()
 	By("tearing down the test environment,but I do nothing here.")
 	err := testEnv.Stop()
-        // Set 4 with random
+	// Set 4 with random
 	if err != nil {
 		time.Sleep(4 * time.Second)
 	}

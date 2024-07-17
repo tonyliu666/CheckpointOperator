@@ -3,19 +3,19 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"github.com/segmentio/kafka-go"
+	"log"
+	logger "sigs.k8s.io/controller-runtime/pkg/log"
 	"strings"
 	"testing"
 	"time"
-	"log"
-	"github.com/segmentio/kafka-go"
-	logger"sigs.k8s.io/controller-runtime/pkg/log"
 	util "tony123.tw/util"
 )
 
 func TestProduceMessageToDifferentTopics(t *testing.T) {
 	// newpod.Name=httpd, nodeName="kubenode01"
 	ProduceMessageToDifferentTopics("httpd", "default", "kubenode01")
-	newPodName, nameSpace, nodeName, err:=consumeMessagehelper()
+	newPodName, nameSpace, nodeName, err := consumeMessagehelper()
 	if err != nil {
 		t.Error("Error consuming kafka message")
 	}

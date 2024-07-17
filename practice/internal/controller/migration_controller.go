@@ -216,6 +216,8 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 					log.Log.Error(err, "unable to get the registry ip")
 					return err
 				}
+				// destination node should pull the original image(eg: postgresql:latest)
+				err = handlers.OriginalImageChecker(&pod, migration.Spec.Destination)
 
 				// buildah deployment deployed on the node which is same as the node of the pod
 				err = handlers.BuildahPodPushImage(i, pod.Spec.NodeName, "docker-registry", kubeletResponse.Items[0], registryIp)
@@ -223,7 +225,7 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 					log.Log.Error(err, "unable to push image to registry")
 					return err
 				}
-				
+
 				err = handlers.DeleteBuildahJobs(clientset)
 				if err != nil {
 					log.Log.Error(err, "unable to delete the buildah jobs")

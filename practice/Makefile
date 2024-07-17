@@ -132,6 +132,9 @@ ifndef ignore-not-found
   ignore-not-found = false
 endif
 
+.PHONY: deploy-all 
+deploy-all: deploy upwebhook upregistry buildupwebhook imagepullsecret buildrestore uprestore deploystrimzi ## Deploy all components to the K8s cluster specified in ~/.kube/config.
+
 .PHONY: install
 install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/crd | $(KUBECTL) apply -f -
@@ -194,9 +197,9 @@ buildupwebhook: ## Run the webhook server for testing.
 	cd testwebhook && docker build -t testwebhook  .
 	docker tag testwebhook:latest tonyliu666/testwebhook:latest
 	docker push tonyliu666/testwebhook:latest
-	kubectl apply -f testwebhook/webhooktest.yaml
 .PHONY: upwebhook
 upwebhook: ## Run the webhook server for testing.
+	kubectl create ns docker-registry --dry-run=client -o yaml | kubectl apply -f - 
 	kubectl apply -f testwebhook/registry-role.yaml
 	kubectl apply -f testwebhook/webhooktest.yaml
 .PHONY: downwebhook
@@ -204,33 +207,38 @@ downwebhook: ## Run the webhook server for testing.
 	kubectl delete -f testwebhook/webhooktest.yaml
 .PHONY: upregistry
 upregistry: ## Run the webhook server for testing.
-	kubectl create ns docker-registry
+	kubectl create ns docker-registry --dry-run=client -o yaml | kubectl apply -f - 
+	kubectl apply -f yaml/registry/registry-config/webookconfigmap.yaml
 	kubectl apply -f yaml/registry/daemonsets.yaml
 	
 .PHONY: downregistry
 downregistry: ## Run the webhook server for testing.
 	kubectl delete -f yaml/registry/daemonsets.yaml
 
-.PHONY: deploysecretkey
-deploysecretkey: ## If the practice-controller-manager is still in ContainerCreating state, then delete that pod and it can run again.
-	kubectl get secrets kubelet-client-certs -n key-store -o yaml | sed 's/namespace: key-store/namespace: practice-system/g' | kubectl apply -f -
-
 .PHONY: imagepullsecret
 imagepullsecret: ## If the practice-controller-manager is still in ContainerCreating state, then delete that pod and it can run again.
-	kubectl get secrets regcred -n docker-registry -o yaml | sed 's/namespace: docker-registry/namespace: restore/g' | kubectl apply -f -
+	kubectl get secrets regcred -n default -o yaml | sed 's/namespace: docker-registry/namespace: restore/g' | kubectl apply -f -
 
-.PHONY: deleteoldpod
-deleteoldpod: ## If the practice-controller-manager is still in ContainerCreating state, then delete that pod and it can run again.
+.PHONY: buildrestore
+buildrestore: ## If the practice-controller-manager is still in ContainerCreating state, then delete that pod and it can run again.
 	cd handlers/restore && docker build -t restore .
 	docker tag restore:latest tonyliu666/restore:latest
 	docker push tonyliu666/restore:latest
-.PHONY: applyoldpod
-applyoldpod: 
+.PHONY: uprestore
+uprestore: 
 	kubectl apply -f handlers/restore/restore-handler.yaml
 	kubectl apply -f handlers/restore/restore-role.yaml
 .PHONY: downoldpod
 downoldpod:
+	kubectl delete -f handlers/restore/restore-role.yaml
 	kubectl delete -f handlers/restore/restore-handler.yaml
+
+.PHONY: deploystrimzi
+# you can use 'kubectl wait kafka/my-cluster --for=condition=Ready --timeout=300s -n kafka ' to check if the kafka cluster is ready
+deploystrimzi: 
+	kubectl create namespace kafka
+	kubectl create -f 'https://strimzi.io/install/latest?namespace=kafka' -n kafka
+	kubectl apply -f yaml/kafka/kafka-ephemeral-single.yaml -n kafka
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary (ideally with version)

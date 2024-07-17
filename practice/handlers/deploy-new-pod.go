@@ -9,6 +9,25 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	util "tony123.tw/util"
 )
+func OriginalImageChecker(pod *corev1.Pod, dstNode string) error {
+	imageIDList := []string{}
+	for _, containerStatus := range pod.Status.ContainerStatuses {
+		imageID := containerStatus.ImageID
+		imageIDList = append(imageIDList, imageID)
+	}
+
+	// check the image id of the original pod on the destination node
+	err := util.CheckImageIDExistOnNode(imageIDList, dstNode)
+	if err != nil {
+		log.Log.Error(err, "unable to check image id")
+		return fmt.Errorf("unable to check image id: %w", err)
+	}
+	// check the check-image-id job is finished or not
+	// set the context for the time limit of the job
+
+	err = util.CheckJobStatus("check-image-id", "Succeeded")
+	return nil
+}
 
 func DeployPodOnNewNode(pod *corev1.Pod) error {
 	msgList, err := ConsumeMessage(pod.Spec.NodeName)

@@ -61,7 +61,6 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 		// create an event sent to kafka broker
 		// TODO: sent messages to kafka broker(kubeletResponse.Items[0],and what timestamp)
 		if e.Action == "push" {
-			// Print the event for debugging purposes
 			log.Info("Event received ", "event", e)
 			// if the mediaType is equal to application/vnd.oci.image.manifest.v1+json, then mean all the image content has been pushed
 			if e.Target.MediaType == "application/vnd.oci.image.manifest.v1+json" || e.Target.MediaType == "application/vnd.docker.distribution.manifest.v2+json" {
@@ -73,8 +72,11 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 				// get the node name of the pod
 				nodeName, err := util.GetNodeNameByHostIP(registryPodIP, registryPodList)
 				// send messages to kafka broker
+				if err != nil {
+					log.Error(err, "unable to get node name by host IP")
+				}
 				if nodeName == "" {
-					fmt.Println("unable to get the node name")
+					log.Warn("Node name not found for registryPodIP:", registryPodIP)
 					continue 
 				}
 				err = kafkaproducer.ProduceMessage(nodeName, e.Target.Repository)

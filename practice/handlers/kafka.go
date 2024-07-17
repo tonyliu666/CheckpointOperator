@@ -31,8 +31,6 @@ func ConsumeMessage(nodeName string) ([]kafka.Message, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	log.Log.Info("ready to fetch message", "nodeName", nodeName)
-
 	for {
 		select {
 		case <-ctx.Done():

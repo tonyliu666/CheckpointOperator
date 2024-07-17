@@ -1,15 +1,15 @@
 apiVersion: v1 
 kind: Pod
 metadata: 
-  name: redis10
+  name: redis14
   namespace: default
 spec:
   containers:
-  - name: redis10
+  - name: redis14
     image: redis:latest
   imagePullSecrets:
     - name: regcred
-  nodeName: ip-10-0-8-70
+  nodeName: workernode01
 # apiVersion: v1 
 # kind: Pod
 # metadata: 
