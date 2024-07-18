@@ -8,6 +8,8 @@ import (
 
 	"github.com/segmentio/kafka-go"
 )
+// This file is for testing strimzi kafka server, not for production
+
 
 func main() {
     // Specify the bootstrap servers, topic, and consumer group ID

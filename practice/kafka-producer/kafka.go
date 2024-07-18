@@ -8,11 +8,10 @@ import (
 	"log"
 	"os"
 
-	// "os"
 
 	"github.com/segmentio/kafka-go"
 )
-
+// This file is for testing strimzi kafka server, not for production
 func main() {
 	// bootstrapServers := "my-cluster-kafka-bootstrap:9092"
 	// bootstrapServers := "bootstrap.my-kafka.example.com:31192"

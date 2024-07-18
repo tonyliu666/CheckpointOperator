@@ -28,7 +28,7 @@ func ConsumeMessage(nodeName string) ([]kafka.Message, error) {
 	messageList := []kafka.Message{}
 	// ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	// defer cancel()
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	for {
@@ -77,7 +77,7 @@ func ConsumeMessageFromDifferentTopics(nodeName string) ([]kafka.Message, error)
 
 	defer reader.Close()
 	messageList := []kafka.Message{}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	log.Log.Info("ready to fetch message", "topic", topic)

@@ -2,9 +2,10 @@ apiVersion: api.my.domain/v1alpha1
 kind: Migration
 metadata:
   name: migration-sample
+  namespace: practice-system
 spec:
   # TODO(user): Add fields here
-  podname: mongodb2
+  podname: mongodb
   deployment: 
   namespace: default
   destination: workernode01

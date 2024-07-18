@@ -228,8 +228,8 @@ buildrestore: ## If the practice-controller-manager is still in ContainerCreatin
 uprestore: 
 	kubectl apply -f handlers/restore/restore-handler.yaml
 	kubectl apply -f handlers/restore/restore-role.yaml
-.PHONY: downoldpod
-downoldpod:
+.PHONY: downrestore
+downrestore:
 	kubectl delete -f handlers/restore/restore-role.yaml
 	kubectl delete -f handlers/restore/restore-handler.yaml
 

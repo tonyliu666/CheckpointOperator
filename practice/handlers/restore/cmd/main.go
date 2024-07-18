@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"restore-daemon/handler"
 	"restore-daemon/kafka"
 	"strings"
@@ -11,13 +10,12 @@ import (
 
 func main() {
 	// get the message from kafka broker with infinite loop
+	log.Info("Start to consume the message from kafka")
 	for {
 		newPodName, nameSpace, nodeName, err := kafka.ConsumeMessage()
 		if err != nil {
 			log.Error("unable to get the message from kafka")
 		}
-		log.Info("newPodName ", newPodName, " nameSpace ", nameSpace, " nodeName ", nodeName)
-
 		if newPodName == "" || nameSpace == "" || nodeName == "" {
 			continue
 		}
@@ -34,7 +32,7 @@ func main() {
 			}
 		} else {
 			// TODO: handle the case that the pod is not alive
-			fmt.Println(state)
+			log.Error("The state of the ", newPodName, " pod is ", state)
 			log.Error("The ", newPodName, " pod is not alive on the", nodeName, " node")
 		}
 	}

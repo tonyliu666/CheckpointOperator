@@ -37,7 +37,7 @@ func consumeMessagehelper() (string, string, string, error) {
 	})
 
 	defer reader.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	logger.Log.Info("ready to fetch message")
