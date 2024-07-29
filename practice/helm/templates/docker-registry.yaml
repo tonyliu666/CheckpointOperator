@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: docker-registry
+  labels:
+    app: docker-registry
+  namespace: {{.Values.registry.namespace}}
+spec:
+  selector:
+    matchLabels:
+      app: docker-registry
+  template:
+    metadata:
+      labels:
+        app: docker-registry
+    spec:
+      containers:
+      - name: docker-registry
+        image: registry:latest
+        ports:
+        - containerPort: 5000
+          hostPort: {{.Values.registry.ports.hostPort}}
+          name: registry
+          protocol: {{.Values.registry.ports.protocol}}
+        volumeMounts:
+        - name: {{.Values.registry.volumeMounts.registry-name}}
+          mountPath: {{.Values.registry.volumeMounts.registry-mountPath}}
+        - name: {{.Values.registry.volumeMounts.config-name}}
+          mountPath: {{.Values.registry.volumeMounts.config-mountPath}}
+        env:
+        - name: REGISTRY_HTTP_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: registry-secret
+              key: REGISTRY_HTTP_SECRET
+      # Assuming /auth is the directory containing the htpasswd file
+      volumes:
+      - name: nfs-registry
+        emptyDir: {}
+      - name: config-volume
+        configMap:
+          name: registry-config
+          items:
+          - key: config.yml
+            path: config.yml
+
+
