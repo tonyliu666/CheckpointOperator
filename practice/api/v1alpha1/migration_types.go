@@ -29,11 +29,13 @@ type MigrationSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of Migration. Edit migration_types.go to remove/update
-	Podname string `json:"podname"`
+	PodName string `json:"podname"`
 	// deployment can be optional
 	Deployment  string `json:"deployment,omitempty"`
 	Namespace   string `json:"namespace"`
-	Destination string `json:"destination"`
+	DestinationNode string `json:"destinationNode"`
+	DestinationNamespace string `json:"destinationNamespace"`
+	Specify []string `json:"specify"`
 }
 
 // MigrationStatus defines the observed state of Migration

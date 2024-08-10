@@ -55,6 +55,7 @@ type kubeletCheckpointResponse struct {
 //+kubebuilder:rbac:groups="",resources=deployments,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="batch",resources=jobs,verbs=get;list;watch;create;update;patch;delete
 
+
 // want the controller to list all the pods in other namespace and checkpoint them
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -75,15 +76,18 @@ func (r *MigrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	migration := &apiv1alpha1.Migration{}
 	err := r.Get(ctx, req.NamespacedName, migration)
 
+	// fill the variable in util/global.go
+	util.FillinGlobalVariables(migration)
+
 	if err != nil {
 		l.Error(err, "unable to fetch the migration object")
 		return ctrl.Result{}, err
 	}
 	// check if the deployment field is empty
-	if migration.Spec.Deployment == "" {
-		CheckpointSinglePod(ctx, r, migration, nil)
+	if migration.Spec.Deployment != "" {
+		CheckpointDeployment(ctx, r)
 	} else {
-		CheckpointDeployment(ctx, r, migration)
+		CheckpointSinglePod(ctx, r, nil)
 	}
 	// TODO(user): your logic here
 	// make install before running the operator, because for api perspective, they don't understand the CRD
@@ -91,15 +95,15 @@ func (r *MigrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	return ctrl.Result{}, nil
 }
-func CheckpointDeployment(ctx context.Context, r *MigrationReconciler, migration *apiv1alpha1.Migration) error {
+func CheckpointDeployment(ctx context.Context, r *MigrationReconciler) error {
 	// check all the pods in the deployment and checkpoint them
 	// get the deployment
 	deployment := &appsv1.Deployment{}
 	// create a namespace that equals to the namespace of the migration object
 
-	namespace := migration.Spec.Namespace
+	namespace := util.SourceNamespace
 	ns := types.NamespacedName{
-		Name:      migration.Spec.Deployment,
+		Name:      util.Deployment,
 		Namespace: namespace,
 	}
 	err := r.Get(ctx, ns, deployment)
@@ -121,7 +125,7 @@ func CheckpointDeployment(ctx context.Context, r *MigrationReconciler, migration
 		LabelSelector: labelSelector,
 	}
 	// get the pods in the deployment
-	err = CheckpointSinglePod(ctx, r, migration, listOptions)
+	err = CheckpointSinglePod(ctx, r, listOptions)
 	if err != nil {
 		log.Log.Error(err, "unable to checkpoint the deployment")
 		return err
@@ -130,7 +134,7 @@ func CheckpointDeployment(ctx context.Context, r *MigrationReconciler, migration
 
 }
 
-func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration *apiv1alpha1.Migration, listOptions *client.ListOptions) error {
+func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler,  listOptions *client.ListOptions) error {
 	podList := &corev1.PodList{}
 	logger := log.FromContext(ctx)
 	if listOptions == nil {
@@ -141,7 +145,7 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 		}
 		// only keep the pod whose name is the same as the podname in the migration object
 		for _, pod := range podList.Items {
-			if pod.Name == migration.Spec.Podname {
+			if pod.Name == util.PodName {
 				podList = &corev1.PodList{
 					Items: []corev1.Pod{pod},
 				}
@@ -158,7 +162,7 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 		}
 		// Now I can't handle this case: podname: nginx, deployment: nginx recorded in custom resource, the nginx-deployment will also be checkpointed
 		for i, pod := range podList.Items {
-			if strings.HasPrefix(pod.Name, migration.Spec.Deployment) {
+			if strings.HasPrefix(pod.Name, util.Deployment) {
 				filteredPods = append(filteredPods, podList.Items[i])
 			}
 		}
@@ -175,7 +179,7 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 					"https://%s:%d/checkpoint/%s/%s/%s",
 					pod.Status.HostIP,
 					10250,
-					migration.Spec.Namespace,
+					util.SourceNamespace,
 					pod.Name,
 					container.Name,
 				)
@@ -211,13 +215,17 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 				}
 
 				// find the pod ip of registry pod
-				registryIp, err := handlers.ReturnRegistryIP(clientset, migration.Spec.Destination)
+				registryIp, err := handlers.ReturnRegistryIP(clientset, util.DestinationNode)
 				if err != nil {
 					log.Log.Error(err, "unable to get the registry ip")
 					return err
 				}
 				// destination node should pull the original image(eg: postgresql:latest)
-				err = handlers.OriginalImageChecker(&pod, migration.Spec.Destination)
+				err = handlers.OriginalImageChecker(&pod, util.DestinationNode)
+				if err != nil {
+					log.Log.Error(err, "unable to pull the original image")
+					return err 
+				}
 
 				// buildah deployment deployed on the node which is same as the node of the pod
 				err = handlers.BuildahPodPushImage(i, pod.Spec.NodeName, "docker-registry", kubeletResponse.Items[0], registryIp)

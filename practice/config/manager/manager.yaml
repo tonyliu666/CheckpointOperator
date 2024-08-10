@@ -11,6 +11,45 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: system
 ---
+# for "system:serviceaccount:practice-system:practice-controller-manager\" cannot create resource \"namespaces\" in API group \"\" at the cluster scope
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: controller-manager-role
+  labels:
+    app.kubernetes.io/name: cluster-role
+    app.kubernetes.io/instance: controller-manager
+    app.kubernetes.io/component: manager
+    app.kubernetes.io/created-by: practice
+    app.kubernetes.io/part-of: practice
+    app.kubernetes.io/managed-by: kustomize
+rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "create"]
+
+--- 
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: controller-manager-binding
+  labels:
+    app.kubernetes.io/name: cluster-role-binding
+    app.kubernetes.io/instance: controller-manager
+    app.kubernetes.io/component: manager
+    app.kubernetes.io/created-by: practice
+    app.kubernetes.io/part-of: practice
+    app.kubernetes.io/managed-by: kustomize
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: controller-manager-role
+subjects:
+- kind: ServiceAccount
+  name: controller-manager
+  namespace: system
+--- 
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -109,3 +148,8 @@ spec:
             secretName: kubelet-client-certs
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
+
+
+
+
+

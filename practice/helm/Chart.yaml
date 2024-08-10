@@ -36,3 +36,7 @@ maintainers:
     email: tonyliu@gmail.com
       
 
+dependencies:
+  - name:  strimzi-kafka-operator
+    version: "0.33.2"  # Use the appropriate version you need
+    repository: "https://strimzi.io/charts"

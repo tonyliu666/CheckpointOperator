@@ -209,6 +209,7 @@ downwebhook: ## Run the webhook server for testing.
 upregistry: ## Run the webhook server for testing.
 	kubectl create ns docker-registry --dry-run=client -o yaml | kubectl apply -f - 
 	kubectl apply -f yaml/registry/registry-config/webookconfigmap.yaml
+	kubectl apply -f yaml/registry/registry-secrets.yaml
 	kubectl apply -f yaml/registry/daemonsets.yaml
 	
 .PHONY: downregistry
@@ -226,6 +227,7 @@ buildrestore: ## If the practice-controller-manager is still in ContainerCreatin
 	docker push tonyliu666/restore:latest
 .PHONY: uprestore
 uprestore: 
+	kubectl create ns restore --dry-run=client -o yaml | kubectl apply -f -
 	kubectl apply -f handlers/restore/restore-handler.yaml
 	kubectl apply -f handlers/restore/restore-role.yaml
 .PHONY: downrestore

@@ -15,63 +15,7 @@ func int64Ptr(i int64) *int64 { return &i }
 
 func BuildahPodPushImage(index int, nodeName string, nameSpace string, checkpoint string, registryIp string) error {
 	podName := util.ModifyCheckpointToImageName(checkpoint)
-	// job := &batchv1.Job{
-	// 	ObjectMeta: metav1.ObjectMeta{
-	// 		Name: "buildah-job-" + fmt.Sprintf("%d", index),
-	// 		// TODO: change the name if I want to sent all the images of deployment to the registry
-	// 	},
-	// 	// set ttlSecondsAfterFinished to 30 seconds
-	// 	Spec: batchv1.JobSpec{
-	// 		TTLSecondsAfterFinished: func() *int32 { i := int32(20); return &i }(),
-	// 		Template: corev1.PodTemplateSpec{
-	// 			ObjectMeta: metav1.ObjectMeta{
-	// 				Labels: map[string]string{
-	// 					"app": "buildah",
-	// 				},
-	// 			},
-	// 			Spec: corev1.PodSpec{
-	// 				Containers: []corev1.Container{
-	// 					{
-	// 						Name:  "buildah",
-	// 						Image: "quay.io/buildah/stable",
-	// 						SecurityContext: &corev1.SecurityContext{
-	// 							Privileged: func() *bool { b := true; return &b }(),
-	// 							RunAsUser:  int64Ptr(0),
-	// 							RunAsGroup: int64Ptr(0),
-	// 						},
-	// 						Command: []string{"/bin/bash"},
-	// 						// builah add the file under checkpointed-image to the new container
-	// 						Args: []string{
-	// 							"-c",
-	// 							// "newcontainer=$(buildah from scratch); buildah add $newcontainer " + checkpoint + "  /" + ";buildah config --annotation=io.kubernetes.cri-o.annotations.checkpoint.name=" + podName + " $newcontainer; buildah commit $newcontainer " + podName + ":latest; buildah rm $newcontainer; buildah push --creds=myuser:mypasswd --tls-verify=false localhost/" + podName + ":latest " + registryIp + ":5000/" + podName + ":latest;"+ " sleep 60;",
-	// 							"sleep infinity",
-	// 						},
-	// 						VolumeMounts: []corev1.VolumeMount{
-	// 							{
-	// 								Name:      "checkpointed-image",
-	// 								MountPath: "/var/lib/kubelet/checkpoints/",
-	// 							},
-	// 						},
-	// 						WorkingDir: "/",
-	// 					},
-	// 				},
-	// 				Volumes: []corev1.Volume{
-	// 					{
-	// 						Name: "checkpointed-image",
-	// 						VolumeSource: corev1.VolumeSource{
-	// 							HostPath: &corev1.HostPathVolumeSource{
-	// 								Path: "/var/lib/kubelet/checkpoints/",
-	// 								Type: new(corev1.HostPathType), // Ensure correct type
-	// 							},
-	// 						},
-	// 					},
-	// 				},
-	// 				NodeName:      nodeName,
-	// 				RestartPolicy: corev1.RestartPolicyNever, // Ensure the job doesn't restart
-	// 			},
-	// 		},
-	// 	},
-	// }
+	
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "buildah-job-"+fmt.Sprintf("%d", index),

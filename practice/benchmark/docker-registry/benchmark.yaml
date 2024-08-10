@@ -1,0 +1,51 @@
+# ServiceAccount in the docker-registry namespace
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: event-list-sa
+  namespace: docker-registry
+---
+# Role to list and get custom resources and events in the docker-registry namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: docker-registry
+  name: event-list-role
+rules:
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["list", "get", "watch"]
+---
+# RoleBinding to bind the Role to the ServiceAccount in the docker-registry namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: event-list-rolebinding
+  namespace: docker-registry
+subjects:
+- kind: ServiceAccount
+  name: event-list-sa
+  namespace: docker-registry
+roleRef:
+  kind: Role
+  name: event-list-role
+  apiGroup: rbac.authorization.k8s.io
+---
+# Pod in the docker-registry namespace
+apiVersion: v1
+kind: Pod
+metadata:
+  name: benchmark
+  namespace: docker-registry
+spec:
+  serviceAccountName: event-list-sa
+  containers:
+  - name: benchmark
+    image: tonyliu666/benchmark-docker:latest
+    resources:
+      limits:
+        cpu: "100m"
+        memory: "100Mi"
+      requests:
+        cpu: "100m"
+        memory: "100Mi"

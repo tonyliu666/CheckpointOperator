@@ -75,6 +75,8 @@ make undeploy
 
 #### If you encounter the too many request when pulling the image from dockerHub, then create the secret token: 
 
+### before using helm to deploy your application, please execute this command: 
+
 > kubectl create secret docker-registry regcred \
   --docker-server="https://index.docker.io/v1/" \
   --docker-username="<Username>" \

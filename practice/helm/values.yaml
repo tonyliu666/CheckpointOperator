@@ -10,58 +10,69 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
 
-webhooktest:
-  name: webhooktest
-  namespace: docker-registry
-  ports: 
-    - protocol: TCP
-      port: 8080
-      targetPort: 8080
-  image: 
-    repository: tonyliu666/testwebhook
-    tag: latest
+# webhooktest:
+#   name: webhooktest
+#   namespace: docker-registry
+#   ports: 
+#     - protocol: TCP
+#       port: 8080
+#       targetPort: 8080
+#   image: 
+#     repository: tonyliu666/testwebhook
+#     tag: latest
 
 
-registry:
-  secret:
-    name: regcred
-  pushSecret:
-    name: registry-secret
-    namespace: docker-registry
-    data:
-      - name: myuser
-        value: bXl1c2Vy
-      - name: mypassword
-        value: bXlwYXNzd29yZA==
+# registry:
+#   secret:
+#     name: regcred
+#   pushSecret:
+#     name: registry-secret
+#     namespace: docker-registry
+#     data:
+#       - name: myuser
+#         value: bXl1c2Vy
+#       - name: mypassword
+#         value: bXlwYXNzd29yZA==
 
 
-  namespace: docker-registry
-  replicas: 1
-  image: 
-    repository: registry
-    tag: latest
-  ports: 
-    - hostPort: 30010
-      protocol: TCP
+#   namespace: docker-registry
+#   replicas: 1
+#   image: 
+#     repository: registry
+#     tag: latest
+#   ports: 
+#     - hostPort: 30010
+#       protocol: TCP
       
-  volumeMounts: 
-    - registry-name: registry-data
-      registry-mountPath: /var/lib/registry
-    - config-name: config-volume
-      config-mountPath: /etc/docker/registry
-  env: 
-    - name: REGISTRY_HTTP_SECRET
-      value: myuser:$2y$05$SC5AAIwwjc54t4h4XQEFXey5a5xEkdH6sR7SiwzSTRqvVpa6R2HbW
-  imagePullSecrets: 
-    - name: regcred
-  volumes: 
-    - name: registry-data
-      emptyDir: {}
-    - name: config-volume
-      configMap: 
-        name: registry-config
-        items: 
-          - key: config.yml
+#   volumeMounts: 
+#     - registryName: registry-data
+#       registryMountPath: /var/lib/registry
+#     - configName: config-volume
+#       configMountPath: /etc/docker/registry
+#   env: 
+#     - name: REGISTRY_HTTP_SECRET
+#       value: myuser:$2y$05$SC5AAIwwjc54t4h4XQEFXey5a5xEkdH6sR7SiwzSTRqvVpa6R2HbW
+#   webhookservice:
+#     - url: http://webhooktest:8080/webhook
+#       timeout: 5s
+#       threshold: 5
+#       backoff: 1s
+#       events: 
+#         - push
+
+# restore: 
+#   - namespace: restore 
+#     image: 
+#       repository: tonyliu666/restore
+#       tag: latest
+
+strimziKafka: 
+  - kafka: 
+      version: "3.7.0"
+      replicas: "3"
+  - zookeeper: 
+      replicas: "3"
+
 
 imagePullSecrets: []
 nameOverride: ""

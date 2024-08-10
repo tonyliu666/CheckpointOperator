@@ -128,3 +128,10 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - v1
+  resources:
+  - namespaces
+  verbs:
+  - create
+  - get

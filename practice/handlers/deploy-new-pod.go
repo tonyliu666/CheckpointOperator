@@ -67,15 +67,22 @@ func DeployPodOnNewNode(pod *corev1.Pod) error {
 			log.Log.Error(err, "unable to create clientset", err)
 			return fmt.Errorf("unable to create clientset: %w", err)
 		}
+		// make sure the destantion namespace is created 
+		err = checkDestinationNameSpaceExists()
+		if err != nil {
+			log.Log.Error(err, "unable to check destination namespace") 
+			return fmt.Errorf("unable to check destination namespace: %w", err)
+		}
+
 		// TODO: replace default namespace with the namespace of the pod
-		newpod, err := clientset.CoreV1().Pods("default").Create(context.TODO(), migratePod, metav1.CreateOptions{})
+		newpod, err := clientset.CoreV1().Pods(util.DestinationNamespace).Create(context.TODO(), migratePod, metav1.CreateOptions{})
 		if err != nil {
 			log.Log.Error(err, "unable to deploy new pod")
 			return fmt.Errorf("unable to create pod: %w", err)
 		}
 		// TODO: notify the other service to watch this new pod created successfully or not
 		// send kafka message to broker, default namesapce in the later will be changed to random namespace
-		if err := ProduceMessageToDifferentTopics(newpod.Name, "default", nodeName); err != nil {
+		if err := ProduceMessageToDifferentTopics(newpod.Name, util.DestinationNamespace, nodeName); err != nil {
 			log.Log.Error(err, "failed to produce different message")
 			return fmt.Errorf("failed to produce message: %w", err)
 		}
@@ -84,6 +91,28 @@ func DeployPodOnNewNode(pod *corev1.Pod) error {
 			"nodeName", nodeName,
 		)
 
+	}
+	return nil
+}
+func checkDestinationNameSpaceExists() error {
+	clientset, err := util.CreateClientSet()
+	if err != nil {
+		log.Log.Error(err, "unable to create clientset")
+		return fmt.Errorf("unable to create clientset: %w", err)
+	}
+	_, err = clientset.CoreV1().Namespaces().Get(context.TODO(), util.DestinationNamespace, metav1.GetOptions{})
+	if err != nil {
+		log.Log.Error(err, "unable to get the destination namespace")
+		// create the namespace
+		_, err = clientset.CoreV1().Namespaces().Create(context.TODO(), &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: util.DestinationNamespace,
+			},
+		}, metav1.CreateOptions{})
+		if err != nil {
+			log.Log.Error(err, "unable to create the destination namespace")
+			return fmt.Errorf("unable to create the destination namespace: %w", err)
+		}
 	}
 	return nil
 }
