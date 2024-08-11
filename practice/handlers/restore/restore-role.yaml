@@ -22,3 +22,28 @@ roleRef:
   kind: Role
   name: pod-list-role
   apiGroup: rbac.authorization.k8s.io
+
+--- 
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pod-list-clusterrole
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["list", "get", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pod-list-clusterrolebinding
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: restore
+roleRef:
+  kind: ClusterRole
+  name: pod-list-clusterrole
+  apiGroup: rbac.authorization.k8s.io
+

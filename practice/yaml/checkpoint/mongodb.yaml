@@ -7,6 +7,6 @@ spec:
   containers:
   - name: mongodb2
     image: mongo:latest
-  imagePullSecrets:
-    - name: regcred
+  # imagePullSecrets:
+  #   - name: regcred
   nodeName: workernode02

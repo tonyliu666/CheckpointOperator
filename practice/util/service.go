@@ -6,8 +6,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func GetPodHostIP(pod *corev1.Pod, namespace string) (string, error) {
-	// Get the container hostPort
+func GetPodHostPort(pod *corev1.Pod, namespace string) (string, error) {
 	hostPort := ""
 	for _, container := range pod.Spec.Containers {
 		for _, port := range container.Ports {
@@ -19,5 +18,4 @@ func GetPodHostIP(pod *corev1.Pod, namespace string) (string, error) {
 	hostIP := pod.Status.HostIP
 	// return the service domain name
 	return fmt.Sprintf("%s:%s", hostIP, hostPort), nil
-
 }

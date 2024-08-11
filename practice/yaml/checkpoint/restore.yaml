@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: python
+  name: nginx13
+  namespace: destination
 spec:
   containers:
-  - name: python
-    image: python:latest
-  imagePullSecrets:
-    - name: regcred
-  nodeName: ip-10-0-8-70
+  - name: nginx
+    image: tonyliu666/checkpoint-image
+  nodeName: workernode01
+  
 

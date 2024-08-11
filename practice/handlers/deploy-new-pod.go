@@ -42,11 +42,12 @@ func DeployPodOnNewNode(pod *corev1.Pod) error {
 		// TODO: If buildah pushing a big chunk of image to docker registry, that body will not contain the podname at this moment
 
 		imageName := podName + ":latest"
-		registryServiceIP, err := util.GetPodHostIP(pod, "docker-registry")
+		podIP, err := util.GetPodHostPort(pod, "docker-registry")
 		if err != nil {
 			return fmt.Errorf("can't get nodePort IP: %w", err)
 		}
-		imageLocation := fmt.Sprintf("%s/%s", registryServiceIP, imageName)
+		// imageLocation := fmt.Sprintf("%s/%s", registryServiceIP, imageName)
+		imageLocation := fmt.Sprintf("%s/%s",podIP , imageName)
 		migratePod := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: podName,

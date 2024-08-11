@@ -81,7 +81,6 @@ func (r *DaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	wg.Wait()
-
 	// return ctrl.Result{}, nil
 	return ctrl.Result{RequeueAfter: 500 * time.Millisecond}, nil
 }

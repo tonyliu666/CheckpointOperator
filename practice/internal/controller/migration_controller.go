@@ -23,6 +23,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
@@ -55,7 +56,6 @@ type kubeletCheckpointResponse struct {
 //+kubebuilder:rbac:groups="",resources=deployments,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="batch",resources=jobs,verbs=get;list;watch;create;update;patch;delete
 
-
 // want the controller to list all the pods in other namespace and checkpoint them
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -83,11 +83,23 @@ func (r *MigrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		l.Error(err, "unable to fetch the migration object")
 		return ctrl.Result{}, err
 	}
+	if migration.Spec.Specify != nil {
+		// checkpoint the specified pods in the given namespace
+		listOptions := &client.ListOptions{
+			Namespace: util.SourceNamespace,
+		}
+		err = CheckpointSinglePod(ctx, r, listOptions, true)
+		if err != nil {
+			l.Error(err, "unable to checkpoint the specified pods")
+			return ctrl.Result{}, err
+		}
+	}
+
 	// check if the deployment field is empty
 	if migration.Spec.Deployment != "" {
 		CheckpointDeployment(ctx, r)
 	} else {
-		CheckpointSinglePod(ctx, r, nil)
+		CheckpointSinglePod(ctx, r, nil,false)
 	}
 	// TODO(user): your logic here
 	// make install before running the operator, because for api perspective, they don't understand the CRD
@@ -125,7 +137,7 @@ func CheckpointDeployment(ctx context.Context, r *MigrationReconciler) error {
 		LabelSelector: labelSelector,
 	}
 	// get the pods in the deployment
-	err = CheckpointSinglePod(ctx, r, listOptions)
+	err = CheckpointSinglePod(ctx, r, listOptions,false)
 	if err != nil {
 		log.Log.Error(err, "unable to checkpoint the deployment")
 		return err
@@ -134,41 +146,13 @@ func CheckpointDeployment(ctx context.Context, r *MigrationReconciler) error {
 
 }
 
-func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler,  listOptions *client.ListOptions) error {
+func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, listOptions *client.ListOptions, specifyOrNot bool) error {
 	podList := &corev1.PodList{}
 	logger := log.FromContext(ctx)
-	if listOptions == nil {
-		err := r.List(ctx, podList)
-		if err != nil {
-			logger.Error(err, "unable to list the pods")
-			return err
-		}
-		// only keep the pod whose name is the same as the podname in the migration object
-		for _, pod := range podList.Items {
-			if pod.Name == util.PodName {
-				podList = &corev1.PodList{
-					Items: []corev1.Pod{pod},
-				}
-				break
-			}
-		}
-	} else {
-		filteredPods := []corev1.Pod{}
-		err := r.List(ctx, podList, listOptions)
-		if err != nil {
-			fmt.Println("unable to list the pods")
-			logger.Error(err, "unable to list the pods")
-			return err
-		}
-		// Now I can't handle this case: podname: nginx, deployment: nginx recorded in custom resource, the nginx-deployment will also be checkpointed
-		for i, pod := range podList.Items {
-			if strings.HasPrefix(pod.Name, util.Deployment) {
-				filteredPods = append(filteredPods, podList.Items[i])
-			}
-		}
-		podList = &corev1.PodList{
-			Items: filteredPods,
-		}
+	err := filterPods(listOptions, podList, ctx, r, logger, specifyOrNot)
+	if err != nil {
+		logger.Error(err, "unable to filter the pods")
+		return err
 	}
 
 	for i, pod := range podList.Items {
@@ -224,7 +208,7 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler,  listOptio
 				err = handlers.OriginalImageChecker(&pod, util.DestinationNode)
 				if err != nil {
 					log.Log.Error(err, "unable to pull the original image")
-					return err 
+					return err
 				}
 
 				// buildah deployment deployed on the node which is same as the node of the pod
@@ -243,6 +227,69 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler,  listOptio
 		}
 	}
 	return nil
+}
+
+func filterPods(listOptions *client.ListOptions, podList *corev1.PodList,
+	ctx context.Context, r *MigrationReconciler, logger logr.Logger, specifyOrNot bool) error {
+	if listOptions == nil {
+		err := r.List(ctx, podList)
+		if err != nil {
+			logger.Error(err, "unable to list the pods")
+			return err
+		}
+		// only keep the pod whose name is the same as the podname in the migration object
+		for _, pod := range podList.Items {
+			if pod.Name == util.PodName {
+				podList = &corev1.PodList{
+					Items: []corev1.Pod{pod},
+				}
+				break
+			}
+		}
+	} else {
+		if specifyOrNot {
+			newPodList := &corev1.PodList{}
+			err := r.List(ctx, podList, listOptions)
+			if err != nil {
+				logger.Error(err, "unable to list the pods")
+				return err
+			}
+			for _, pod := range util.Specify {
+				found := false
+				for i, podItem := range podList.Items {
+					// if the podItem.Name contains the pod name, then add it to the newPodList
+					if strings.Contains(podItem.Name, pod) {
+						newPodList.Items = append(newPodList.Items, podList.Items[i])
+						found = true
+					}
+				}
+				if !found {
+					logger.Info("pod not found in your specified pods", "pod", pod)
+					return fmt.Errorf("pod not found in your specified pods")
+				}
+			}
+			podList = newPodList
+		}else{
+			filteredPods := []corev1.Pod{}
+			err := r.List(ctx, podList, listOptions)
+			if err != nil {
+				logger.Error(err, "unable to list the pods")
+				return err
+			}
+			// Now I can't handle this case: podname: nginx, deployment: nginx recorded in custom resource, the nginx-deployment will also be checkpointed
+			for i, pod := range podList.Items {
+				if strings.HasPrefix(pod.Name, util.Deployment) {
+					filteredPods = append(filteredPods, podList.Items[i])
+				}
+			}
+			podList = &corev1.PodList{
+				Items: filteredPods,
+			}
+		}
+		
+	}
+	return nil
+
 }
 
 // SetupWithManager sets up the controller with the Manager.
