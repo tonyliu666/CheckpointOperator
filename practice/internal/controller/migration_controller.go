@@ -83,7 +83,7 @@ func (r *MigrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		l.Error(err, "unable to fetch the migration object")
 		return ctrl.Result{}, err
 	}
-	if migration.Spec.Specify != nil {
+	if len(util.Specify) != 0 {
 		// checkpoint the specified pods in the given namespace
 		listOptions := &client.ListOptions{
 			Namespace: util.SourceNamespace,
@@ -93,13 +93,14 @@ func (r *MigrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			l.Error(err, "unable to checkpoint the specified pods")
 			return ctrl.Result{}, err
 		}
-	}
-
-	// check if the deployment field is empty
-	if migration.Spec.Deployment != "" {
-		CheckpointDeployment(ctx, r)
 	} else {
-		CheckpointSinglePod(ctx, r, nil,false)
+		// check if the deployment field is empty
+		if migration.Spec.Deployment != "" {
+			CheckpointDeployment(ctx, r)
+		} else {
+			log.Log.Info("checkpoint all the pods in the namespace")
+			CheckpointSinglePod(ctx, r, nil, false)
+		}
 	}
 	// TODO(user): your logic here
 	// make install before running the operator, because for api perspective, they don't understand the CRD
@@ -137,7 +138,7 @@ func CheckpointDeployment(ctx context.Context, r *MigrationReconciler) error {
 		LabelSelector: labelSelector,
 	}
 	// get the pods in the deployment
-	err = CheckpointSinglePod(ctx, r, listOptions,false)
+	err = CheckpointSinglePod(ctx, r, listOptions, false)
 	if err != nil {
 		log.Log.Error(err, "unable to checkpoint the deployment")
 		return err
@@ -153,6 +154,10 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, listOption
 	if err != nil {
 		logger.Error(err, "unable to filter the pods")
 		return err
+	}
+	// print the podList
+	for _, pod := range podList.Items {
+		log.Log.Info("pod found", "pod", pod.Name)
 	}
 
 	for i, pod := range podList.Items {
@@ -232,6 +237,7 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, listOption
 func filterPods(listOptions *client.ListOptions, podList *corev1.PodList,
 	ctx context.Context, r *MigrationReconciler, logger logr.Logger, specifyOrNot bool) error {
 	if listOptions == nil {
+		log.Log.Info("listOptions is nil")
 		err := r.List(ctx, podList)
 		if err != nil {
 			logger.Error(err, "unable to list the pods")
@@ -240,26 +246,27 @@ func filterPods(listOptions *client.ListOptions, podList *corev1.PodList,
 		// only keep the pod whose name is the same as the podname in the migration object
 		for _, pod := range podList.Items {
 			if pod.Name == util.PodName {
-				podList = &corev1.PodList{
-					Items: []corev1.Pod{pod},
-				}
-				break
+				log.Log.Info("pod found", "pod", pod.Name)
+				log.Log.Info("util.PodName", "util.PodName", util.PodName)
+				// only keep the pod whose name is the same as the podname in the migration object
+				podList.Items = []corev1.Pod{pod}
 			}
 		}
 	} else {
 		if specifyOrNot {
-			newPodList := &corev1.PodList{}
-			err := r.List(ctx, podList, listOptions)
+			newpodList := &corev1.PodList{}
+			err := r.List(ctx, newpodList, listOptions)
 			if err != nil {
 				logger.Error(err, "unable to list the pods")
 				return err
 			}
 			for _, pod := range util.Specify {
 				found := false
-				for i, podItem := range podList.Items {
+				for i, podItem := range newpodList.Items {
 					// if the podItem.Name contains the pod name, then add it to the newPodList
-					if strings.Contains(podItem.Name, pod) {
-						newPodList.Items = append(newPodList.Items, podList.Items[i])
+					if podItem.Name == pod {
+						// append the pod to the podList
+						podList.Items = append(podList.Items, newpodList.Items[i])
 						found = true
 					}
 				}
@@ -268,8 +275,7 @@ func filterPods(listOptions *client.ListOptions, podList *corev1.PodList,
 					return fmt.Errorf("pod not found in your specified pods")
 				}
 			}
-			podList = newPodList
-		}else{
+		} else {
 			filteredPods := []corev1.Pod{}
 			err := r.List(ctx, podList, listOptions)
 			if err != nil {
@@ -282,14 +288,14 @@ func filterPods(listOptions *client.ListOptions, podList *corev1.PodList,
 					filteredPods = append(filteredPods, podList.Items[i])
 				}
 			}
-			podList = &corev1.PodList{
-				Items: filteredPods,
-			}
+			// podList = &corev1.PodList{
+			// 	Items: filteredPods,
+			// }
+			podList.Items = filteredPods
 		}
-		
+
 	}
 	return nil
-
 }
 
 // SetupWithManager sets up the controller with the Manager.

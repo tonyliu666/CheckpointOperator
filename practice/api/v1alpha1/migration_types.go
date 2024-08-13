@@ -35,7 +35,7 @@ type MigrationSpec struct {
 	Namespace   string `json:"namespace"`
 	DestinationNode string `json:"destinationNode"`
 	DestinationNamespace string `json:"destinationNamespace"`
-	Specify []string `json:"specify"`
+	Specify []string `json:"specify,omitempty"`
 }
 
 // MigrationStatus defines the observed state of Migration

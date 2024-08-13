@@ -61,7 +61,6 @@ spec:
             - destinationNode
             - namespace
             - podname
-            - specify
             type: object
           status:
             description: MigrationStatus defines the observed state of Migration
