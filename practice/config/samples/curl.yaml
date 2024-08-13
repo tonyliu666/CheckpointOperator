@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: curl-pod
+  namespace: practice-system
+spec:
+  containers:
+  - name: curl-container
+    image: curlimages/curl:latest
+    command: [ "sleep", "infinity" ]
+    volumeMounts:
+    - name: ca-volume
+      mountPath: /certs
+  volumes:
+  - name: ca-volume
+    configMap:
+      name: ca-cert

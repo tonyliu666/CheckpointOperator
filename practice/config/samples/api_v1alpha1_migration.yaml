@@ -2,11 +2,13 @@ apiVersion: api.my.domain/v1alpha1
 kind: Migration
 metadata:
   name: migration-sample
+  labels:
+    example-webhook-enabled: "true"
   namespace: practice-system
 spec:
   # TODO(user): Add fields here
-  podname: mongodb2
-  deployment: 
+  podname: nginx2
+  deployment: mongodb 
   namespace: default
   destinationNode: workernode01
   # an array of strings representing the names of pods to migrate

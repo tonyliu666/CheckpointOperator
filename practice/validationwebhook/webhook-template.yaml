@@ -1,0 +1,49 @@
+# apiVersion: admissionregistration.k8s.io/v1
+# kind: ValidatingWebhookConfiguration
+# metadata:
+#   name: example-webhook
+# webhooks:
+#   - name: example-webhook.default.svc.cluster.local
+#     admissionReviewVersions:
+#       - "v1"
+#     sideEffects: "None"
+#     timeoutSeconds: 30
+#     objectSelector:
+#       matchLabels:
+#         example-webhook-enabled: "true"
+#     clientConfig:
+#       service:
+#         name: example-webhook
+#         namespace: default
+#         path: "/validate"
+#       caBundle: "${CA_PEM_B64}"
+#     rules:
+#     - apiGroups:   ["api.my.domain"]        # Target the correct API group
+#       apiVersions: ["v1alpha1"]             # Target the correct version
+#       operations:  ["CREATE", "UPDATE"]     # Validate both creation and updates
+#       resources:   ["migrations"]           # Target the 'migrations' resource
+#       scope:       "Namespaced"
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: example-webhook
+webhooks:
+  - name: example-webhook.default.svc.cluster.local
+    admissionReviewVersions:
+      - "v1beta1"
+    sideEffects: "None"
+    timeoutSeconds: 30
+    objectSelector:
+      matchLabels:
+        example-webhook-enabled: "true"
+    clientConfig:
+      service:
+        name: example-webhook
+        namespace: default
+        path: "/mutate"
+      caBundle: "${CA_PEM_B64}"
+    rules:
+      - operations: [ "CREATE" ]
+        apiGroups: [""]
+        apiVersions: ["v1"]
+        resources: ["pods"]

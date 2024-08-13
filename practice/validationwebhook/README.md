@@ -1,0 +1,1 @@
+# this folder is for validating the custom resources, migration to the cluster
