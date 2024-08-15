@@ -98,7 +98,6 @@ func (r *MigrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if migration.Spec.Deployment != "" {
 			CheckpointDeployment(ctx, r)
 		} else {
-			log.Log.Info("checkpoint all the pods in the namespace")
 			CheckpointSinglePod(ctx, r, nil, false)
 		}
 	}
@@ -154,10 +153,6 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, listOption
 	if err != nil {
 		logger.Error(err, "unable to filter the pods")
 		return err
-	}
-	// print the podList
-	for _, pod := range podList.Items {
-		log.Log.Info("pod found", "pod", pod.Name)
 	}
 
 	for i, pod := range podList.Items {
@@ -237,7 +232,6 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, listOption
 func filterPods(listOptions *client.ListOptions, podList *corev1.PodList,
 	ctx context.Context, r *MigrationReconciler, logger logr.Logger, specifyOrNot bool) error {
 	if listOptions == nil {
-		log.Log.Info("listOptions is nil")
 		err := r.List(ctx, podList)
 		if err != nil {
 			logger.Error(err, "unable to list the pods")

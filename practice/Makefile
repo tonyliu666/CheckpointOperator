@@ -247,6 +247,9 @@ downstrimizi:
 	kubectl delete -f 'https://strimzi.io/install/latest?namespace=kafka' -n kafka
 	kubectl delete namespace kafka
 
+cert-manager: 
+	kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.15.2/cert-manager.yaml
+
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary (ideally with version)
 # $2 - package url which can be installed

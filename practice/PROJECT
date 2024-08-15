@@ -17,6 +17,10 @@ resources:
   kind: Migration
   path: tony123.tw/api/v1alpha1
   version: v1alpha1
+  webhooks:
+    defaulting: true
+    validation: true
+    webhookVersion: v1
 - controller: true
   domain: my.domain
   group: api
