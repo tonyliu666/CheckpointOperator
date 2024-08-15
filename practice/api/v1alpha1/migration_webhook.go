@@ -111,8 +111,9 @@ func (r *Migration) validateMigration() error {
 
 	// check whether the pod with the PodName exists in the namespace
 	// create a clientset
+	clientset, err := createClientSet()
 	if r.Spec.PodName != "" {
-		clientset, err := createClientSet()
+		
 		if err != nil {
 			return fmt.Errorf("unable to create clientset", err)
 		}
@@ -121,6 +122,23 @@ func (r *Migration) validateMigration() error {
 			return fmt.Errorf("your specified pod %s does not exist in namespace %s", r.Spec.PodName, r.Spec.Namespace)
 		}
 	}
+	if r.Spec.Deployment != "" {
+		// check whether the deployment with the Deployment name exists in the namespace
+		_, err = clientset.AppsV1().Deployments(r.Spec.Namespace).Get(context.TODO(), r.Spec.Deployment, metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("your specified deployment %s does not exist in namespace %s", r.Spec.Deployment, r.Spec.Namespace)
+		}
+	}
+	if len(r.Spec.Specify) > 0 {
+		// check whether the specified pods exist in the namespace
+		for _, podName := range r.Spec.Specify {
+			_, err = clientset.CoreV1().Pods(r.Spec.Namespace).Get(context.TODO(), podName, metav1.GetOptions{})
+			if err != nil {
+				return fmt.Errorf("your specified pod %s does not exist in namespace %s", podName, r.Spec.Namespace)
+			}
+		}
+	}
+
 	return nil
 }
 func createClientSet() (*kubernetes.Clientset, error) {

@@ -22,5 +22,5 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: validating-webhook-configuration
   annotations:
-    # cert-manager.io/inject-ca-from: CERTIFICATE_NAMESPACE/CERTIFICATE_NAME
-    cert-manager.io/inject-ca-from: practice-system/
+    cert-manager.io/inject-ca-from: CERTIFICATE_NAMESPACE/CERTIFICATE_NAME
+    # cert-manager.io/inject-ca-from: practice-system/
