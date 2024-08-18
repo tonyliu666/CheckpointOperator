@@ -76,7 +76,7 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 					log.Error(err, "unable to get node name by host IP")
 				}
 				if nodeName == "" {
-					log.Warn("Node name not found for registryPodIP:", registryPodIP)
+					log.Warn("Node name not found for registryPodIP: ", registryPodIP)
 					continue 
 				}
 				err = kafkaproducer.ProduceMessage(nodeName, e.Target.Repository)

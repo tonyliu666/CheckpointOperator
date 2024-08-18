@@ -37,6 +37,7 @@ func BuildahPodPushImage(index int, nodeName string, nameSpace string, checkpoin
 							Image: "quay.io/buildah/stable",
 							SecurityContext: &corev1.SecurityContext{
 								Privileged: func() *bool { b := true; return &b }(),
+								RunAsUser: int64Ptr(0),
 							},
 							Command: []string{"/bin/bash"},
 							// builah add the file under checkpointed-image to the new container

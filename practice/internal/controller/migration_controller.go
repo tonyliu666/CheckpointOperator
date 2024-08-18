@@ -240,8 +240,6 @@ func filterPods(listOptions *client.ListOptions, podList *corev1.PodList,
 		// only keep the pod whose name is the same as the podname in the migration object
 		for _, pod := range podList.Items {
 			if pod.Name == util.PodName {
-				log.Log.Info("pod found", "pod", pod.Name)
-				log.Log.Info("util.PodName", "util.PodName", util.PodName)
 				// only keep the pod whose name is the same as the podname in the migration object
 				podList.Items = []corev1.Pod{pod}
 			}
