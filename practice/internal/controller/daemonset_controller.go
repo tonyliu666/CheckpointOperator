@@ -66,7 +66,7 @@ func (r *DaemonSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// get the pods whose label is app: docker-registry
 	if err := r.List(ctx, pods, client.InNamespace("docker-registry"), client.MatchingLabels{"app": "docker-registry"}); err != nil {
 		log.Log.Error(err, "unable to list pods")
-		return ctrl.Result{}, err
+		return ctrl.Result{RequeueAfter: 500 * time.Second}, err
 	}
 	// depend on how many docker registry pods, create how many go routines
 	var wg sync.WaitGroup

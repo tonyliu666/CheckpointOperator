@@ -33,7 +33,7 @@ func main() {
 		} else {
 			// TODO: handle the case that the pod is not alive
 			log.Error("The state of the ", newPodName, " pod is ", state)
-			log.Error("The ", newPodName, " pod is not alive on the", nodeName, " node")
+			log.Error("The ", newPodName, " pod is not alive on the ", nodeName, " node")
 		}
 	}
 }

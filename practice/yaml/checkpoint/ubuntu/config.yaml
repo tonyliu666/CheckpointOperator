@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: counter-script
+  namespace: default
+data:
+  counter.sh: |
+    #!/bin/bash
+    count=0
+    while true; do
+      echo "Counter: $count"
+      ((count++))
+      sleep 1
+    done

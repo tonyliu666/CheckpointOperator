@@ -53,8 +53,6 @@ func GetKubeletClient() *http.Client {
 
 func CheckpointPod(client *http.Client, address string) (*http.Response, error) {
 	logger := log.Log
-	CheckpointStartTime := time.Now()
-
 	fullURL := fmt.Sprintf("%s?timeout=%d", address, 10*60*1000)
 	// Create the request body
 	requestBody := bytes.NewBuffer([]byte("{}"))
@@ -66,6 +64,7 @@ func CheckpointPod(client *http.Client, address string) (*http.Response, error) 
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	CheckpointStartTime := time.Now()
 	// Send the request
 	resp, err := client.Do(req)
 	// set the timeout for kubelet checkpoint api, the timeout within the query

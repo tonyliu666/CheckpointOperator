@@ -7,6 +7,4 @@ spec:
   containers:
   - name: redis14
     image: redis:latest
-  imagePullSecrets:
-    - name: regcred
   nodeName: workernode01

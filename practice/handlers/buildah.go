@@ -15,10 +15,9 @@ func int64Ptr(i int64) *int64 { return &i }
 
 func BuildahPodPushImage(index int, nodeName string, nameSpace string, checkpoint string, registryIp string) error {
 	podName := util.ModifyCheckpointToImageName(checkpoint)
-	
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "buildah-job-"+fmt.Sprintf("%d", index),
+			Name: "buildah-job-" + fmt.Sprintf("%d", index),
 			// TODO: change the name if I want to sent all the images of deployment to the registry
 		},
 		// set ttlSecondsAfterFinished to 30 seconds
@@ -37,13 +36,16 @@ func BuildahPodPushImage(index int, nodeName string, nameSpace string, checkpoin
 							Image: "quay.io/buildah/stable",
 							SecurityContext: &corev1.SecurityContext{
 								Privileged: func() *bool { b := true; return &b }(),
-								RunAsUser: int64Ptr(0),
+								RunAsUser:  int64Ptr(0),
+								Capabilities: &corev1.Capabilities{
+									Add: []corev1.Capability{"SYS_ADMIN"},
+								},
 							},
 							Command: []string{"/bin/bash"},
 							// builah add the file under checkpointed-image to the new container
 							Args: []string{
 								"-c",
-								"newcontainer=$(buildah from scratch); buildah add $newcontainer " + checkpoint + "  /" + ";buildah config --annotation=io.kubernetes.cri-o.annotations.checkpoint.name="+podName+" $newcontainer; buildah commit $newcontainer " + podName + ":latest; buildah rm $newcontainer; buildah push --creds=myuser:mypasswd --tls-verify=false localhost/" + podName + ":latest " + registryIp + ":5000/" + podName + ":latest;",
+								"newcontainer=$(buildah from scratch); buildah add $newcontainer " + checkpoint + "  /" + ";buildah config --annotation=io.kubernetes.cri-o.annotations.checkpoint.name=" + podName + " $newcontainer; buildah commit $newcontainer " + podName + ":latest; buildah rm $newcontainer; buildah push --creds=myuser:mypasswd --tls-verify=false localhost/" + podName + ":latest " + registryIp + ":5000/" + podName + ":latest;",
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
@@ -65,11 +67,18 @@ func BuildahPodPushImage(index int, nodeName string, nameSpace string, checkpoin
 					},
 					NodeName:      nodeName,
 					RestartPolicy: corev1.RestartPolicyNever, // Ensure the job doesn't restart
+					// SecurityContext: &corev1.PodSecurityContext{
+					// 	RunAsUser: int64Ptr(0),
+					// 	RunAsNonRoot: func() *bool { b := false; return &b }(),
+					// 	SeccompProfile: &corev1.SeccompProfile{
+					// 		// type: unconfined
+					// 		Type: "Unconfined",
+					// 	},
+					// },
 				},
 			},
 		},
 	}
-
 
 	clientset, err := util.CreateClientSet()
 	if err != nil {

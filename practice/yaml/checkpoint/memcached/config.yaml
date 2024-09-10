@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: memcached-config
+  namespace: memcached
+data:
+  MEMCACHED_MEMORY: "64"  # Memory in MB
+  MEMCACHED_MAX_CONNECTIONS: "1024"
+  MEMCACHED_THREADS: "4"

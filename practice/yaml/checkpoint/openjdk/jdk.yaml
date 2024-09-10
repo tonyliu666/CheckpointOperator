@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openjdk-deployment
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openjdk
+  template:
+    metadata:
+      labels:
+        app: openjdk
+    spec:
+      containers:
+        - name: openjdk
+          image: openjdk:latest
+          command: ["sleep", "infinity"]  # Replace this with your Java application
+          ports:
+            - containerPort: 8080  # Replace with the port your application uses

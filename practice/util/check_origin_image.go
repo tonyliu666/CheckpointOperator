@@ -13,6 +13,7 @@ import (
 const (
 	checkJobStatusTime = 60 // the checktime of the job status, you could adjust here
 )
+
 func intUtility(x int64) *int64 {
 	return &x
 }

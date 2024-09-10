@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -81,7 +82,7 @@ func (r *MigrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	if err != nil {
 		l.Error(err, "unable to fetch the migration object")
-		return ctrl.Result{}, err
+		return ctrl.Result{RequeueAfter: 30 * time.Second}, err
 	}
 	if len(util.Specify) != 0 {
 		// checkpoint the specified pods in the given namespace
@@ -91,7 +92,7 @@ func (r *MigrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		err = CheckpointSinglePod(ctx, r, listOptions, true)
 		if err != nil {
 			l.Error(err, "unable to checkpoint the specified pods")
-			return ctrl.Result{}, err
+			return ctrl.Result{RequeueAfter: 30 * time.Second}, err
 		}
 	} else {
 		// check if the deployment field is empty

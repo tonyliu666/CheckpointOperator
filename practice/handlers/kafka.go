@@ -52,6 +52,13 @@ func ConsumeMessage(nodeName string) ([]kafka.Message, error) {
 				"msg.Value", string(msg.Value),
 				"nodeName", nodeName,
 			)
+			if string(msg.Key) == "" || string(msg.Value) == "" {
+				// commit the message
+				if err := reader.CommitMessages(ctx, msg); err != nil {
+					log.Log.Error(err, "Failed to commit message")
+				}
+				continue
+			}
 
 			if string(msg.Key) == nodeName {
 				if err := reader.CommitMessages(ctx, msg); err != nil {

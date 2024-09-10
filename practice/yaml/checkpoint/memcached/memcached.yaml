@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: memcached
+  namespace: memcached
+spec:
+  replicas: 3  # Number of Memcached pods
+  selector:
+    matchLabels:
+      app: memcached
+  template:
+    metadata:
+      labels:
+        app: memcached
+    spec:
+      containers:
+        - name: memcached
+          image: memcached:latest
+          ports:
+            - containerPort: 11211
+          env:
+            - name: MEMCACHED_MEMORY
+              valueFrom:
+                configMapKeyRef:
+                  name: memcached-config
+                  key: MEMCACHED_MEMORY
+            - name: MEMCACHED_MAX_CONNECTIONS
+              valueFrom:
+                configMapKeyRef:
+                  name: memcached-config
+                  key: MEMCACHED_MAX_CONNECTIONS
+            - name: MEMCACHED_THREADS
+              valueFrom:
+                configMapKeyRef:
+                  name: memcached-config
+                  key: MEMCACHED_THREADS

@@ -113,7 +113,7 @@ func (r *Migration) validateMigration() error {
 	// create a clientset
 	clientset, err := createClientSet()
 	if r.Spec.PodName != "" {
-		
+
 		if err != nil {
 			return fmt.Errorf("unable to create clientset", err)
 		}

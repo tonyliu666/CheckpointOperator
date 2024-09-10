@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: rabbitmq-pod
+  namespace: default
+  labels:
+    app: rabbitmq
+spec:
+  containers:
+  - name: rabbitmq-container
+    image: rabbitmq:3-management
+    ports:
+    - containerPort: 5672
+      name: amqp
+    - containerPort: 15672
+      name: management
+  restartPolicy: Always
+  nodeName: workernode01

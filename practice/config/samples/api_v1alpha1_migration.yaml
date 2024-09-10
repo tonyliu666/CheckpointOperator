@@ -7,16 +7,17 @@ metadata:
   namespace: practice-system
 spec:
   # TODO(user): Add fields here
-  podname: 
-  deployment: counter-app
+  podname: tomcatpod
+  deployment: 
   namespace: default
   destinationNode: workernode02
   # an array of strings representing the names of pods to migrate
-  destinationNamespace: destination
+  destinationNamespace: migration
   # if the name listed in specify exists in pod name, then the pod will be migrated
   specify: 
-    - nginx2
-    - redis2
+    # - nginx2
+    # - redis2
+
   # helm: 
   #   - name: nginx
   #     chart: stable/nginx

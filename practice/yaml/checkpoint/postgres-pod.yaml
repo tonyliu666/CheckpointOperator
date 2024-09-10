@@ -1,11 +1,31 @@
+# apiVersion: v1
+# kind: Pod
+# metadata:
+#   name: postgrespod
+#   namespace: default
+# spec:
+#   containers:
+#   - name: postgres
+#     image: docker.io/postgres:latest
+#     ports:
+#       - containerPort: 5432
+#     env:
+#       - name: POSTGRES_DB
+#         value: mydatabase
+#       - name: POSTGRES_USER
+#         value: myuser
+#       - name: POSTGRES_PASSWORD
+#         value: mypassword
+#   nodeName: workernode01
 apiVersion: v1
 kind: Pod
 metadata:
   name: postgrespod
+  namespace: default
 spec:
   containers:
   - name: postgres
-    image: docker.io/postgres:latest
+    image: ubuntu/mysql:latest
     ports:
       - containerPort: 5432
     env:
@@ -15,6 +35,6 @@ spec:
         value: myuser
       - name: POSTGRES_PASSWORD
         value: mypassword
-  imagePullSecrets:
-    - name: regcred
-  nodeName: ip-15-0-12-104
+      - name: MYSQL_ROOT_PASSWORD
+        value: rootpassword123  # Set the root password for MySQL
+  nodeName: workernode01

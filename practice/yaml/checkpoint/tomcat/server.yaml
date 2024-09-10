@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: tomcatpod
+  namespace: default
+spec:
+  containers:
+  - name: tomcat
+    image: tomcat:latest
+    ports:
+    - containerPort: 8080
+  nodeName: workernode01

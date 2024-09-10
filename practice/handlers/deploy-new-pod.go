@@ -9,6 +9,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	util "tony123.tw/util"
 )
+
 func OriginalImageChecker(pod *corev1.Pod, dstNode string) error {
 	imageIDList := []string{}
 	for _, containerStatus := range pod.Status.ContainerStatuses {
@@ -47,7 +48,7 @@ func DeployPodOnNewNode(pod *corev1.Pod) error {
 			return fmt.Errorf("can't get nodePort IP: %w", err)
 		}
 		// imageLocation := fmt.Sprintf("%s/%s", registryServiceIP, imageName)
-		imageLocation := fmt.Sprintf("%s/%s",podIP , imageName)
+		imageLocation := fmt.Sprintf("%s/%s", podIP, imageName)
 		migratePod := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: podName,
@@ -68,10 +69,10 @@ func DeployPodOnNewNode(pod *corev1.Pod) error {
 			log.Log.Error(err, "unable to create clientset", err)
 			return fmt.Errorf("unable to create clientset: %w", err)
 		}
-		// make sure the destantion namespace is created 
+		// make sure the destantion namespace is created
 		err = checkDestinationNameSpaceExists()
 		if err != nil {
-			log.Log.Error(err, "unable to check destination namespace") 
+			log.Log.Error(err, "unable to check destination namespace")
 			return fmt.Errorf("unable to check destination namespace: %w", err)
 		}
 

@@ -1,0 +1,32 @@
+# apiVersion: v1
+# kind: Pod
+# metadata:
+#   name: ubuntu-pod
+#   namespace: default
+# spec:
+#   containers:
+#     - name: ubuntu
+#       image: ubuntu:latest
+#       command: ["/bin/bash", "/scripts/counter.sh"]
+#       volumeMounts:
+#         - name: script-volume
+#           mountPath: /scripts
+#       stdin: true
+#       tty: true
+#   volumes:
+#     - name: script-volume
+#       configMap:
+#         name: counter-script
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ubuntu
+  namespace: default
+spec:
+  containers:
+    - name: ubuntu
+      image: ubuntu:latest
+      command: ["sleep", "infinity"]  # Keeps the pod running indefinitely
+      stdin: true
+      tty: true
+  nodeName: workernode01
