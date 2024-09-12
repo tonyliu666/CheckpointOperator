@@ -198,14 +198,6 @@ upregistry: ## Run the webhook server for testing.
 deploysecretkey: ## If the practice-controller-manager is still in ContainerCreating state, then delete that pod and it can run again.
 	kubectl get secrets kubelet-client-certs -n key-store -o yaml | sed 's/namespace: key-store/namespace: practice-system/g' | kubectl apply -f -
 
-.PHONY: deploysecretController
-imagepullsecret: ## If the practice-controller-manager is still in ContainerCreating state, then delete that pod and it can run again.
-	kubectl get secrets regcred -n default -o yaml | sed 's/namespace: default/namespace: practice-system/g' | kubectl apply -f -
-
-.PHONY: deploysecretMigration
-imagepullsecret: ## If the practice-controller-manager is still in ContainerCreating state, then delete that pod and it can run again.
-	kubectl get secrets regcred -n default -o yaml | sed 's/namespace: default/namespace: migration/g' | kubectl apply -f -
-
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary (ideally with version)

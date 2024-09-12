@@ -22,4 +22,9 @@ resources:
   group: api
   kind: DaemonSet
   version: v1
+- controller: true
+  group: batch
+  kind: Job
+  path: k8s.io/api/batch/v1
+  version: v1
 version: "3"

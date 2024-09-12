@@ -313,6 +313,8 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 				return err
 			}
 
+			// TODO: 
+
 			// ready to deploy the pod on the destination node
 			err = handlers.DeployPodOnNewNode(&pod, migration.Spec.Namespace, migration.Spec.Destination)
 			if err != nil {

@@ -27,6 +27,8 @@ func BuildahPodPushImage(originPodName string, nameSpace string, checkpoint stri
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("buildah-job-%s", originPodName),
+			//TODO: add finalizer to clean up the job
+			Finalizers: []string{"checkpoint-image/cleanup"},
 		},
 		Spec: batchv1.JobSpec{
 			TTLSecondsAfterFinished: func() *int32 { i := int32(3); return &i }(),
@@ -43,8 +45,7 @@ func BuildahPodPushImage(originPodName string, nameSpace string, checkpoint stri
 							Args: []string{
 								"-c",
 								fmt.Sprintf("newcontainer=$(buildah from scratch); if [ -f /mnt/checkpoints/%s ]; then buildah add $newcontainer /mnt/checkpoints/%s /; buildah config --annotation=io.kubernetes.cri-o.annotations.checkpoint.name=%s $newcontainer; buildah commit --log-level=debug $newcontainer  %s:latest; buildah rm $newcontainer;  else echo 'File not found'; exit 1; fi", fileName, fileName, podName, podName),
-								// sleep infinity
-								// "sleep infinity",
+								//"sleep infinity",
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{

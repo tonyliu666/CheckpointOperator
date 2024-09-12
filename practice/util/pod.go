@@ -23,12 +23,13 @@ func DeletePod(podName string) error {
 }
 
 func CheckPodStatus(originPodName string, state string, namespace string) error {
+	log.Log.Info("check pod status", "originPodName", originPodName, "state", state)
 	clientset, err := CreateClientSet()
 	counter := 0
 	if err != nil {
 		return fmt.Errorf("unable to create clientset: %w", err)
 	}
-	log.Log.Info("origin pod name", "originPodName", originPodName)
+	
 	for {
 		// check pod status is running within 30 seconds
 		pods, err := clientset.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
