@@ -8,7 +8,7 @@ import (
 )
 
 func TestGetPodHostIP(t *testing.T) {
-	client,err := CreateClientSet()
+	client, err := CreateClientSet()
 	if err != nil {
 		t.Errorf("failed to create clientset: %v", err)
 	}
@@ -20,9 +20,8 @@ func TestGetPodHostIP(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to get pod host IP: %v", err)
 	}
-	if hostIP != "192.168.56.5:30010"{
+	if hostIP != "192.168.56.5:30010" {
 		t.Errorf("unexpected hostIP")
 	}
-
 
 }

@@ -12,7 +12,7 @@ func GetPodHostIP(pod *corev1.Pod, namespace string) (string, error) {
 	for _, container := range pod.Spec.Containers {
 		for _, port := range container.Ports {
 			hostPort = fmt.Sprintf("%d", port.HostPort)
-			break 
+			break
 		}
 	}
 	// get the hostIP of the pod

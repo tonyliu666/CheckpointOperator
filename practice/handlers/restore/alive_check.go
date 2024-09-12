@@ -4,11 +4,11 @@ package restore
 
 import (
 	"context"
-	
-	util "tony123.tw/util"
+
+	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	log "github.com/sirupsen/logrus"
+	util "tony123.tw/util"
 )
 
 func AliveCheck(nameSpace string, newPodName string, nodeName string) (bool, v1.PodPhase) {

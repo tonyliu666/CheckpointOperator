@@ -95,14 +95,14 @@ var _ = Describe("Migration Controller", func() {
 			By("Checkpointing the pods")
 			r := &MigrationReconciler{
 				Client: k8sClient,
-				Scheme: scheme.Scheme ,
+				Scheme: scheme.Scheme,
 			}
-			
+
 			err := CheckpointSinglePod(ctx, r, migration, nil)
 			Expect(err).ShouldNot(HaveOccurred())
 			// print the err if err is not nil
 			if err != nil {
-				fmt.Println("there exists some errors here",err)
+				fmt.Println("there exists some errors here", err)
 			}
 		})
 	})

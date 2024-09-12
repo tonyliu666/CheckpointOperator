@@ -139,7 +139,7 @@ func GenerateIndex(imageManifestDigest string, imageManifestSize int) ([]byte, e
 	return json.Marshal(manifest)
 }
 
-func CreateOCIImage(fromPath string,checkpointLocation string, containerName string, checkpointName string) error {
+func CreateOCIImage(fromPath string, checkpointLocation string, containerName string, checkpointName string) error {
 	checkpointFile, err := os.Create(filepath.Join(checkpointLocation, checkpointName))
 	if err != nil {
 		return err

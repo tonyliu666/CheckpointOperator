@@ -23,6 +23,7 @@ func BuildahPodPushImage(originPodName string, nameSpace string, checkpoint stri
 	// please follow the given yaml contents to create a specific job
 	fileName := util.ModifyCheckpointToFileName(checkpoint)
 	podName := util.ModifyCheckpointToImageName(checkpoint)
+	
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("buildah-job-%s", originPodName),
@@ -41,8 +42,9 @@ func BuildahPodPushImage(originPodName string, nameSpace string, checkpoint stri
 							Command: []string{"/bin/sh"},
 							Args: []string{
 								"-c",
-								fmt.Sprintf("newcontainer=$(buildah from scratch); if [ -f /mnt/checkpoints/%s ]; then buildah add $newcontainer /mnt/checkpoints/%s /; buildah config --annotation=io.kubernetes.cri-o.annotations.checkpoint.name=%s $newcontainer; buildah commit --log-level=debug $newcontainer  %s:latest; buildah rm $newcontainer;  else echo 'File not found'; exit 1; fi",  fileName, fileName,podName,podName),
-								
+								fmt.Sprintf("newcontainer=$(buildah from scratch); if [ -f /mnt/checkpoints/%s ]; then buildah add $newcontainer /mnt/checkpoints/%s /; buildah config --annotation=io.kubernetes.cri-o.annotations.checkpoint.name=%s $newcontainer; buildah commit --log-level=debug $newcontainer  %s:latest; buildah rm $newcontainer;  else echo 'File not found'; exit 1; fi", fileName, fileName, podName, podName),
+								// sleep infinity
+								// "sleep infinity",
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
@@ -57,14 +59,14 @@ func BuildahPodPushImage(originPodName string, nameSpace string, checkpoint stri
 									MountPath: "/run/containers/storage",
 									Name:      "container-storage-runroot",
 								},
-								{
-									MountPath: "/etc/containers/registries.conf",
-									Name:      "container-storage-conf",
-								},
-								{
-									MountPath: "/etc/containers/policy.json",
-									Name:      "container-policy",
-								},
+								// {
+								// 	MountPath: "/etc/containers/registries.conf",
+								// 	Name:      "container-storage-conf",
+								// },
+								// {
+								// 	MountPath: "/etc/containers/policy.json",
+								// 	Name:      "container-policy",
+								// },
 							},
 							SecurityContext: &corev1.SecurityContext{
 								Privileged: boolUtility(true),
@@ -98,24 +100,25 @@ func BuildahPodPushImage(originPodName string, nameSpace string, checkpoint stri
 								},
 							},
 						},
-						{
-							Name: "container-storage-conf",
-							VolumeSource: corev1.VolumeSource{
-								HostPath: &corev1.HostPathVolumeSource{
-									Path: "/etc/containers/registries.conf",
-								},
-							},
-						},
-						{
-							Name: "container-policy",
-							VolumeSource: corev1.VolumeSource{
-								HostPath: &corev1.HostPathVolumeSource{
-									Path: "/etc/containers/policy.json",
-								},
-							},
-						},
+						// TODO: remove the following settings since kubernetes 1.28.0, uncomment them if you are using kubernetes version < 1.28.0
+						// {
+						// 	Name: "container-storage-conf",
+						// 	VolumeSource: corev1.VolumeSource{
+						// 		HostPath: &corev1.HostPathVolumeSource{
+						// 			Path: "/etc/containers/registries.conf",
+						// 		},
+						// 	},
+						// },
+						// {
+						// 	Name: "container-policy",
+						// 	VolumeSource: corev1.VolumeSource{
+						// 		HostPath: &corev1.HostPathVolumeSource{
+						// 			Path: "/etc/containers/policy.json",
+						// 		},
+						// 	},
+						// },
 					},
-					NodeName: dstNode,
+					NodeName:      dstNode,
 					RestartPolicy: corev1.RestartPolicyOnFailure,
 				},
 			},

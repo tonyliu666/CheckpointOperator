@@ -3,7 +3,6 @@ package handlers
 import (
 	"os"
 	"testing"
-	
 )
 
 func TestImageBuilder(t *testing.T) {
@@ -18,7 +17,7 @@ func TestImageBuilder(t *testing.T) {
 		t.Error(err)
 	}
 	TempDir := "."
-	err = CreateOCIImage("test2.tar",TempDir, "nginx", "checkpoint")
+	err = CreateOCIImage("test2.tar", TempDir, "nginx", "checkpoint")
 	if err != nil {
 		t.Errorf("Expected tar, received %v", err)
 	}

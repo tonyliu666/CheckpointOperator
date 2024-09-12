@@ -37,9 +37,9 @@ import (
 
 	apiv1alpha1 "tony123.tw/api/v1alpha1"
 	"tony123.tw/handlers"
+	restore "tony123.tw/handlers/restore"
 	util "tony123.tw/util"
 	config "tony123.tw/util/config"
-	restore "tony123.tw/handlers/restore"
 )
 
 // MigrationReconciler reconciles a Migration object
@@ -59,7 +59,7 @@ var Migration *apiv1alpha1.Migration
 //+kubebuilder:rbac:groups=api.my.domain,resources=migrations/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=api.my.domain,resources=migrations/finalizers,verbs=update
 //+kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="",resources=deployments,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="",resources=nodes,verbs=get;list
 //+kubebuilder:rbac:groups="",resources=persistentvolumes,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
@@ -77,7 +77,6 @@ var Migration *apiv1alpha1.Migration
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.0/pkg/reconcile
 
-// createPersistentVolume creates a PersistentVolume
 func createPersistentVolume(index int, nfsServer, path string) *corev1.PersistentVolume {
 	return &corev1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{

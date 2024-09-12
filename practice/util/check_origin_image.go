@@ -13,6 +13,7 @@ import (
 const (
 	checkJobStatusTime = 60 // the checktime of the job status, you could adjust here
 )
+
 func intUtility(x int64) *int64 {
 	return &x
 }
@@ -62,14 +63,14 @@ func CheckImageIDExistOnNode(imageIDList []string, dstNode string) error {
 									MountPath: "/run/containers/storage",
 									Name:      "container-storage-runroot",
 								},
-								{
-									MountPath: "/etc/containers/registries.conf",
-									Name:      "container-storage-conf",
-								},
-								{
-									MountPath: "/etc/containers/policy.json",
-									Name:      "container-policy",
-								},
+								// {
+								// 	MountPath: "/etc/containers/registries.conf",
+								// 	Name:      "container-storage-conf",
+								// },
+								// {
+								// 	MountPath: "/etc/containers/policy.json",
+								// 	Name:      "container-policy",
+								// },
 							},
 							SecurityContext: &corev1.SecurityContext{
 								Privileged: boolUtility(true),
@@ -95,22 +96,22 @@ func CheckImageIDExistOnNode(imageIDList []string, dstNode string) error {
 								},
 							},
 						},
-						{
-							Name: "container-storage-conf",
-							VolumeSource: corev1.VolumeSource{
-								HostPath: &corev1.HostPathVolumeSource{
-									Path: "/etc/containers/registries.conf",
-								},
-							},
-						},
-						{
-							Name: "container-policy",
-							VolumeSource: corev1.VolumeSource{
-								HostPath: &corev1.HostPathVolumeSource{
-									Path: "/etc/containers/policy.json",
-								},
-							},
-						},
+						// {
+						// 	Name: "container-storage-conf",
+						// 	VolumeSource: corev1.VolumeSource{
+						// 		HostPath: &corev1.HostPathVolumeSource{
+						// 			Path: "/etc/containers/registries.conf",
+						// 		},
+						// 	},
+						// },
+						// {
+						// 	Name: "container-policy",
+						// 	VolumeSource: corev1.VolumeSource{
+						// 		HostPath: &corev1.HostPathVolumeSource{
+						// 			Path: "/etc/containers/policy.json",
+						// 		},
+						// 	},
+						// },
 					},
 					NodeName:           dstNode,
 					ServiceAccountName: "default",
