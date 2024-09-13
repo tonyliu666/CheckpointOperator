@@ -39,53 +39,54 @@ func OriginalImageChecker(pod *corev1.Pod, dstNode string) error {
 	return nil
 }
 
-func DeployPodOnNewNode(pod *corev1.Pod, nameSpace string, dstNode string) error {
+func DeployPodOnNewNode() (string,error){
 	// deploy a new pod on the destination node
+	if len(util.CheckpointPodName) == 0 {
+		log.Log.Info("No more pods to deploy")
+		return "",fmt.Errorf("no more pods to deploy")
+	}
+	podName := util.CheckpointPodName[0]
+	// pop the first element of the list
+	util.CheckpointPodName = util.CheckpointPodName[1:]
 	migratePod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "checkpoint-" + pod.Name,
+			Name: "checkpoint-" + podName, 
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
-					Name:  "checkpoint-" + pod.Name,
-					Image: "localhost/" + "checkpoint-" + pod.Name + ":latest",
+					Name:  "checkpoint-" + podName, 
+					Image: "localhost/" + "checkpoint-" + podName + ":latest",
 				},
 			},
-			NodeName: dstNode,
+			NodeName: util.DestinationNode,
 		},
 	}
 
 	clientset, err := util.CreateClientSet()
 	if err != nil {
 		log.Log.Error(err, "unable to create clientset", err)
-		return fmt.Errorf("unable to create clientset: %w", err)
-	}
-	// check the buildah pod in migration namespace whose state is completed
-	err = util.CheckPodStatus(pod.Name, "Succeeded", "migration")
-	if err != nil {
-		log.Log.Error(err, "unable to check pod status")
-		return fmt.Errorf("unable to check pod status: %w", err)
+		return "",fmt.Errorf("unable to create clientset: %w", err)
 	}
 
 	// TODO: create a pod on the destination node when the checkpoint image has been pushed to the destination node
-	newpod, err := clientset.CoreV1().Pods(nameSpace).Create(context.Background(), migratePod, metav1.CreateOptions{})
+	newpod, err := clientset.CoreV1().Pods("default").Create(context.Background(), migratePod, metav1.CreateOptions{})
 	if err != nil {
 		if isImageNotFoundError(err) {
 			log.Log.Error(err, "Image not found, retrying to create the pod")
 			// Optionally, you can add a delay before retrying
 			time.Sleep(5 * time.Second)
-			newpod, err = clientset.CoreV1().Pods(nameSpace).Create(context.Background(), migratePod, metav1.CreateOptions{})
+			newpod, err = clientset.CoreV1().Pods("default").Create(context.Background(), migratePod, metav1.CreateOptions{})
 			if err != nil {
 				log.Log.Error(err, "Failed to create the pod after retry")
-				return err
+				return "", err
 			}
 		} else {
 			log.Log.Error(err, "Failed to create the pod")
-			return err
+			return "",err
 		}
 	}
 	log.Log.Info("Pod created successfully", "podName", newpod.Name)
 
-	return nil
+	return podName,nil
 }

@@ -37,7 +37,8 @@ import (
 
 	apiv1alpha1 "tony123.tw/api/v1alpha1"
 	"tony123.tw/handlers"
-	restore "tony123.tw/handlers/restore"
+
+	// restore "tony123.tw/handlers/restore"
 	util "tony123.tw/util"
 	config "tony123.tw/util/config"
 )
@@ -123,6 +124,7 @@ func createPersistentVolumeClaim(index int, namespace string) *corev1.Persistent
 // if not, install them first
 func init() {
 	// Initialize the maps
+	util.InitializeCheckpointPodList()
 	config.PvSourceMap = make(map[string]*corev1.PersistentVolume)
 	config.PvcSourceMap = make(map[string]*corev1.PersistentVolumeClaim)
 
@@ -168,6 +170,9 @@ func (r *MigrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		l.Error(err, "unable to fetch the migration object")
 		return ctrl.Result{}, err
 	}
+
+	util.FillinGlobalVariables(Migration)
+
 	// check if the deployment field is empty
 	if Migration.Spec.Deployment == "" {
 		CheckpointSinglePod(ctx, r, Migration, nil)
@@ -258,6 +263,8 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 	for _, pod := range podList.Items {
 		// checkpoint the container in each pod
 		if pod.Status.Phase == corev1.PodRunning {
+			util.CheckpointPodName = append(util.CheckpointPodName, pod.Name)
+
 			for _, container := range pod.Spec.Containers {
 				address := fmt.Sprintf(
 					"https://%s:%d/checkpoint/%s/%s/%s",
@@ -298,6 +305,13 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 					return err
 				}
 
+				// before deploying a new pod on the new node,I should examine whether the newnode has the original image
+				err = handlers.OriginalImageChecker(&pod, migration.Spec.Destination)
+				if err != nil {
+					log.Log.Error(err, "the original image doesn't exist on the destination node")
+					return err
+				}
+
 				// create buildah pod to build the image
 				err = handlers.BuildahPodPushImage(pod.Name, "migration", kubeletResponse.Items[0], srcNodeIP, migration.Spec.Destination)
 
@@ -305,27 +319,6 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, migration 
 					log.Log.Error(err, "unable to build the image")
 					return err
 				}
-			}
-			// before deploying a new pod on the new node,I should examine whether the newnode has the original image
-			err := handlers.OriginalImageChecker(&pod, migration.Spec.Destination)
-			if err != nil {
-				log.Log.Error(err, "the original image doesn't exist on the destination node")
-				return err
-			}
-
-			// TODO: 
-
-			// ready to deploy the pod on the destination node
-			err = handlers.DeployPodOnNewNode(&pod, migration.Spec.Namespace, migration.Spec.Destination)
-			if err != nil {
-				log.Log.Error(err, "unable to deploy the pod on the destination")
-				return err
-			}
-			// delete the old pod
-			err = restore.DeleteOldPod(migration.Spec.Namespace, pod.Name)
-			if err != nil {
-				log.Log.Error(err, "unable to delete the old pod")
-				return err
 			}
 		}
 	}

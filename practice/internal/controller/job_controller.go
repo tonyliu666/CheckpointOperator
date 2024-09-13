@@ -18,10 +18,13 @@ package controller
 
 import (
 	"context"
-	"fmt"
 
 	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"tony123.tw/handlers"
+	"tony123.tw/restore"
+	util "tony123.tw/util"
+
 	// "k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -61,25 +64,38 @@ func (r *JobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	if err := r.Get(ctx, req.NamespacedName, &job); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	log.Log.Info(fmt.Sprintf("Job: %s", job.Name))
 
 	// Check if the Job is marked for deletion
 	if job.DeletionTimestamp != nil && containsString(job.Finalizers, finalizerName) {
 		// Notify other pods before deletion
-		err := notifyPodsBeforeDeletion(job)
-		if err != nil {
-			log.Log.Error(err, "Error notifying pods before deletion")
-			return ctrl.Result{}, err
-		}
+		log.Log.Info("Notifying pods before deletion")
 
 		// Remove the finalizer to allow deletion to proceed
 		job.Finalizers = removeString(job.Finalizers, finalizerName)
-		if err := r.Update(ctx, &job); err != nil {
-			log.Log.Error(err, "Error removing finalizer")
+		err := r.Update(ctx, &job)
+		if err != nil {
+			log.Log.Error(err, "unable to update the job")
+			return ctrl.Result{}, err
+		}
+
+		// before deletion, deploy the new pod on the destination node
+		podName, err := handlers.DeployPodOnNewNode()
+		if err != nil {
+			if err.Error() == "no more pods to deploy" {
+				log.Log.Info("No more pods to deploy")
+				return ctrl.Result{}, nil
+			}
+			log.Log.Error(err, "Error deploying pod on new node")
+			return ctrl.Result{}, err
+		}
+
+		// delete the old pod
+		err = restore.DeleteOldPod(util.SourceNamespace, podName)
+		if err != nil {
+			log.Log.Error(err, "unable to delete the old pod")
 			return ctrl.Result{}, err
 		}
 	}
-
 	return ctrl.Result{}, nil
 }
 
@@ -90,12 +106,8 @@ func (r *JobReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func notifyPodsBeforeDeletion(job batchv1.Job) error {
-	// Implement your notification logic here
-	fmt.Printf("Notifying pods before deleting job: %s\n", job.Name)
-	// Example: Send a message to another pod or service
-	return nil
-}
+
+
 func containsString(slice []string, str string) bool {
 	for _, v := range slice {
 		if v == str {
@@ -104,7 +116,8 @@ func containsString(slice []string, str string) bool {
 	}
 	return false
 }
-func removeString(slice []string, str string) []string {
+
+func removeString (slice []string, str string) []string {
 	for i, v := range slice {
 		if v == str {
 			return append(slice[:i], slice[i+1:]...)

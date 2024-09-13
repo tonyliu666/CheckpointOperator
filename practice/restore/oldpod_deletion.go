@@ -7,6 +7,10 @@ import (
 	util "tony123.tw/util"
 )
 
+func main(){
+	DeleteOldPod("default", "oldPodName")
+}
+
 func DeleteOldPod(nameSpace string, oldPodName string) error {
 	// get the message from kafka
 	clientset, err := util.CreateClientSet()
@@ -23,10 +27,11 @@ func DeleteOldPod(nameSpace string, oldPodName string) error {
 		}
 		return err
 	}
+	log.Info(oldPodName + " is still running")
 	// delete the old pod
 	err = clientset.CoreV1().Pods(nameSpace).Delete(context.TODO(), oldPodName, metav1.DeleteOptions{})
 	if err != nil {
-		log.Error(err, "unable to delete the old pod")
+		log.Error(err, "unable to delete the old pod here")
 		return err
 	}
 	log.Info("The old pod is deleted successfully")
