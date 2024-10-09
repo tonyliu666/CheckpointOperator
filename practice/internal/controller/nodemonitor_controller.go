@@ -17,7 +17,6 @@ limitations under the License.
 package controller
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"time"
@@ -28,14 +27,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/util/yaml"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"tony123.tw/handlers"
 )
 
 // NodeMonitorReconciler reconciles a NodeMonitor object
@@ -125,6 +123,7 @@ func (r *NodeMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		pods, err := kubeClient.CoreV1().Pods("").List(ctx, metav1.ListOptions{
 			FieldSelector: "spec.nodeName=" + node.Name,
 		})
+		logger.Info("how many pods on this node", "pod number", len(pods.Items))
 		if err != nil {
 			logger.Error(err, "Failed to list pods")
 			return ctrl.Result{}, err
@@ -139,37 +138,13 @@ func (r *NodeMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 		// go through each pod in pods and replace the podname field in the yaml with the pod name
 		for _, pod := range pods.Items {
-			migrationYAML := fmt.Sprintf(`
-			apiVersion: api.my.domain/v1alpha1
-			kind: Migration
-			metadata:
-			name: migration-sample
-			labels:
-				example-webhook-enabled: "true"
-			namespace: practice-system
-			spec:
-			podname: %s
-			deployment: 
-			namespace: default
-			destinationNode: %s
-			destinationNamespace: migration
-			specify:
-			`, pod.Name, migrationNode)
-			// Decode the YAML into an unstructured object
+
 			obj := &unstructured.Unstructured{}
-			dec := yaml.NewYAMLOrJSONDecoder(bytes.NewReader([]byte(migrationYAML)), 1000)
-			if err := dec.Decode(obj); err != nil {
-				logger.Error(err, "Failed to decode Migration resource YAML")
+			err = handlers.DecodeCustomResource(obj, pod.Name, migrationNode)
+			if err != nil {
+				logger.Error(err, "Failed to decode custom resource")
 				return ctrl.Result{}, err
 			}
-
-			// Set the GroupVersionKind for the custom resource
-			obj.SetGroupVersionKind(schema.GroupVersionKind{
-				Group:   "api.my.domain",
-				Version: "v1alpha1",
-				Kind:    "Migration",
-			})
-
 			// Apply the custom resource using the controller-runtime client
 			err = r.Client.Create(ctx, obj)
 			if err != nil {
