@@ -26,4 +26,9 @@ resources:
   group: api
   kind: DaemonSet
   version: v1
+- controller: true
+  domain: my.domain
+  group: api
+  kind: NodeMonitor
+  version: v1alpha1
 version: "3"

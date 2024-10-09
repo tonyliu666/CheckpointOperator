@@ -19,6 +19,14 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - nodes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - pods
   verbs:
   - create
@@ -93,6 +101,32 @@ rules:
   - patch
   - update
 - apiGroups:
+  - api.my.domain
+  resources:
+  - nodemonitors
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - api.my.domain
+  resources:
+  - nodemonitors/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - api.my.domain
+  resources:
+  - nodemonitors/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
   - apps
   resources:
   - daemonsets
@@ -127,6 +161,14 @@ rules:
   - list
   - patch
   - update
+  - watch
+- apiGroups:
+  - metrics.k8s.io
+  resources:
+  - nodes
+  verbs:
+  - get
+  - list
   - watch
 - apiGroups:
   - v1

@@ -7,6 +7,12 @@
 
 ## Getting Started
 
+### the order of deployments: 
+- make docker-build docker-push
+- make manifests
+- make install 
+- make deploy
+
 ### Environments
 - go version 1.22.4
 - docker version 24.0.5

@@ -132,8 +132,11 @@ ifndef ignore-not-found
   ignore-not-found = false
 endif
 
+.PHONY: build-all 
+build-all: buildupwebhook buildrestore docker-build 
+
 .PHONY: deploy-all 
-deploy-all: deploy upwebhook upregistry buildupwebhook imagepullsecret buildrestore uprestore deploystrimzi ## Deploy all components to the K8s cluster specified in ~/.kube/config.
+deploy-all: deploy upwebhook upregistry deploymetrics uprestore deploystrimzi ## Deploy all components to the K8s cluster specified in ~/.kube/config.
 
 .PHONY: install
 install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
@@ -216,9 +219,6 @@ upregistry: ## Run the webhook server for testing.
 downregistry: ## Run the webhook server for testing.
 	kubectl delete -f yaml/registry/daemonsets.yaml
 
-.PHONY: imagepullsecret
-imagepullsecret: ## If the practice-controller-manager is still in ContainerCreating state, then delete that pod and it can run again.
-	kubectl get secrets regcred -n default -o yaml | sed 's/namespace: docker-registry/namespace: restore/g' | kubectl apply -f -
 
 .PHONY: buildrestore
 buildrestore: ## If the practice-controller-manager is still in ContainerCreating state, then delete that pod and it can run again.
@@ -247,8 +247,17 @@ downstrimizi:
 	kubectl delete -f 'https://strimzi.io/install/latest?namespace=kafka' -n kafka
 	kubectl delete namespace kafka
 
+deploymetrics:
+	@echo "Downloading Metrics Server components.yaml..."
+	curl -LO https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+	@echo "Adding --kubelet-insecure-tls to the deployment..."
+	sed -i '/- args:/a\        - --kubelet-insecure-tls' components.yaml
+	mv components.yaml yaml/metrics-server/components.yaml
+	@echo "Updated components.yaml with --kubelet-insecure-tls"
 cert-manager: 
 	kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.15.2/cert-manager.yaml
+downmetrics:
+	kubectl delete -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary (ideally with version)

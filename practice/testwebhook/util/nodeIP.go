@@ -1,16 +1,19 @@
-package util 
+package util
 
 import (
 	"fmt"
+	"log"
 
 	corev1 "k8s.io/api/core/v1"
 )
-func GetNodeNameByHostIP(podIP string , podList *corev1.PodList) (string, error) {
+
+func GetNodeNameByHostIP(podIP string, podList *corev1.PodList) (string, error) {
 	// find the node name which is on the same node as the pod whose IP is podIP
 	var nodeName string
 	for _, pod := range podList.Items {
 		if pod.Status.PodIP == podIP {
 			nodeName = pod.Spec.NodeName
+			log.Println("found the nodeName", nodeName)
 			break
 		}
 	}
