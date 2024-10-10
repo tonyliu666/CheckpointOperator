@@ -19,7 +19,7 @@ func GetNodeNameByHostIP(podIP string, podList *corev1.PodList) (string, error) 
 	}
 
 	if nodeName == "" {
-		return "", fmt.Errorf("can't find the node name by host IP: %s", podIP)
+		return "", fmt.Errorf("can't find the node name by host IP: %s ", podIP)
 	}
 	return nodeName, nil
 }

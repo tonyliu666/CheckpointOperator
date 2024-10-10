@@ -295,5 +295,6 @@ func filterPods(listOptions *client.ListOptions, podList *corev1.PodList,
 func (r *MigrationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&apiv1alpha1.Migration{}).
+		Owns(&apiv1alpha1.Migration{}). // add Owns function here
 		Complete(r)
 }

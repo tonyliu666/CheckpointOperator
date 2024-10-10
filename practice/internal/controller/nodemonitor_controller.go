@@ -25,7 +25,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -123,7 +122,7 @@ func (r *NodeMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		pods, err := kubeClient.CoreV1().Pods("").List(ctx, metav1.ListOptions{
 			FieldSelector: "spec.nodeName=" + node.Name,
 		})
-		logger.Info("how many pods on this node", "pod number", len(pods.Items))
+		// logger.Info("how many pods on this node", "pod number", len(pods.Items))
 		if err != nil {
 			logger.Error(err, "Failed to list pods")
 			return ctrl.Result{}, err
@@ -138,20 +137,35 @@ func (r *NodeMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 		// go through each pod in pods and replace the podname field in the yaml with the pod name
 		for _, pod := range pods.Items {
-
-			obj := &unstructured.Unstructured{}
-			err = handlers.DecodeCustomResource(obj, pod.Name, migrationNode)
+			
+			logger.Info("Pod name", "pod name", pod.Name)
+			
+			err = handlers.DoSSA(ctx,kubeconfig,&pod, migrationNode)
 			if err != nil {
-				logger.Error(err, "Failed to decode custom resource")
-				return ctrl.Result{}, err
+				logger.Error(err, "Failed to do SSA")
 			}
+			
 			// Apply the custom resource using the controller-runtime client
-			err = r.Client.Create(ctx, obj)
-			if err != nil {
-				logger.Error(err, "Failed to create Migration custom resource")
-				return ctrl.Result{}, err
-			}
-			logger.Info("Successfully created Migration custom resource")
+			// TODO: needs to fix the error: failed to call webhook: Post \"https://practice-webhook-service.practice-system.svc:443/mutate-api-my-domain-v1alpha1-migration?timeout=10s
+			
+			// check if the custom resource already exists
+			// err = r.Client.Get(ctx, client.ObjectKeyFromObject(obj), obj)
+			// if err != nil {
+			// 	// not yet created 
+			// 	err = r.Client.Create(ctx, obj)
+			// 	if err != nil {
+			// 		logger.Error(err, "Failed to create Migration custom resource")
+			// 		return ctrl.Result{}, err
+			// 	}
+			// 	logger.Info("Successfully created Migration custom resource")
+			// } else {
+			// 	err = r.Client.Update(ctx, obj)
+			// 	if err != nil {
+			// 		logger.Error(err, "Failed to create Migration custom resource")
+			// 		return ctrl.Result{}, err
+			// 	}
+			// 	logger.Info("Successfully updated Migration custom resource")
+			// }
 		}
 	}
 
@@ -174,13 +188,13 @@ func (r *NodeMonitorReconciler) getCpuUsageForNode(node *corev1.Node, ctx contex
 		return -1, err
 	}
 
-	logger.Info(fmt.Sprintf("Node %s timestamp: %s", node.Name, nodeMetrics.Timestamp))
+	// logger.Info(fmt.Sprintf("Node %s timestamp: %s", node.Name, nodeMetrics.Timestamp))
 
 	// Calculate CPU usage percentage
 	usageCPU := nodeMetrics.Usage.Cpu().MilliValue()
 	allocatableCPU := node.Status.Allocatable.Cpu().MilliValue()
 	cpuPercentage := float64(usageCPU) / float64(allocatableCPU) * 100
-	logger.Info(fmt.Sprintf("Node %s CPU usage: %.2f%%", node.Name, cpuPercentage))
+	// logger.Info(fmt.Sprintf("Node %s CPU usage: %.2f%%", node.Name, cpuPercentage))
 	return cpuPercentage, nil
 
 }
