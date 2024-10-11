@@ -86,7 +86,6 @@ spec:
 		FieldManager: "node-controller",
 	})
 	if err != nil {
-		fmt.Println("error", err)
 		return err
 	}
 

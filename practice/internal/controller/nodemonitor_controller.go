@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -42,18 +43,21 @@ type NodeMonitorReconciler struct {
 	MetricsClient *metricsclientset.Clientset
 }
 
+type PodMemoryUsage struct {
+	pod         corev1.Pod
+	memoryUsage int64
+}
+
 var kubeconfig *rest.Config
 var kubeClient *clientset.Clientset
 var cpu_usage_rate_maps = make(map[string]float64)
-var migrationNode string
+var memory_usage_rate_maps = make(map[string]float64)
+var migrationCPUNode string
+var migrationMemoryNode string
 var logger logr.Logger
 
 func init() {
 	var err error
-	// kubeconfig, err = clientcmd.BuildConfigFromFlags("", "/home/tony/.kube/config")
-	// if err != nil {
-	// 	panic(err)
-	// }
 	kubeconfig, err = rest.InClusterConfig()
 	if err != nil {
 		log.Log.Error(err, "Failed to create kubeconfig")
@@ -63,7 +67,6 @@ func init() {
 	if err != nil {
 		log.Log.Error(err, "Failed to create kubeClient")
 	}
-
 }
 
 // +kubebuilder:rbac:groups=api.my.domain,resources=nodemonitors,verbs=get;list;watch;create;update;patch;delete
@@ -71,6 +74,7 @@ func init() {
 // +kubebuilder:rbac:groups=api.my.domain,resources=nodemonitors/finalizers,verbs=update
 // +kubebuilder:rbac:groups=metrics.k8s.io,resources=nodes,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
+// +kubebuilder:rbac:groups=metrics.k8s.io,resources=pods,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -105,7 +109,7 @@ func (r *NodeMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	// Fetch node metrics
-	cpuPercentage, err := r.getCpuUsageForNode(&node, ctx)
+	cpuPercentage, err := r.getCpuUsageOnNode(&node, ctx)
 	if err != nil {
 		logger.Error(err, fmt.Sprint("Failed to get CPU usage for %s node", node.Name))
 		return ctrl.Result{}, err
@@ -131,21 +135,53 @@ func (r *NodeMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		for nodeName, cpuUsage := range cpu_usage_rate_maps {
 			if cpuUsage < cpuPercentage {
 				cpuPercentage = cpuUsage
-				migrationNode = nodeName
+				migrationCPUNode = nodeName
 			}
 		}
 
 		// go through each pod in pods and replace the podname field in the yaml with the pod name
 		for _, pod := range pods.Items {
-
 			// do the server side apply
-			err = handlers.DoSSA(ctx, kubeconfig, &pod, migrationNode)
+			err = handlers.DoSSA(ctx, kubeconfig, &pod, migrationCPUNode)
 			if err != nil {
 				logger.Error(err, "Failed to do SSA")
 			}
 		}
 	}
 
+	// get memory usage rate
+	memoryUsageRate, err := r.getNodeMemoryUsageRate(ctx, node.Name)
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("Failed to count memory usage rate for %s node", node.Name))
+		return ctrl.Result{}, err
+	}
+	logger.Info(fmt.Sprintf("Node %s memory usage rate: %.2f%%", node.Name, memoryUsageRate))
+	// update the memory_usage_rate_maps
+	memory_usage_rate_maps[node.Name] = memoryUsageRate
+
+	if memoryUsageRate > 40 {
+		// find the least memory usage node to migrate the pod
+		for nodeName, memoryUsage := range memory_usage_rate_maps {
+			if memoryUsage < memoryUsageRate {
+				memoryUsageRate = memoryUsage
+				migrationMemoryNode = nodeName
+			}
+		}
+		// lists all the pods on this node
+		topMemoryUsagesPod, err := r.getTopFivePodsByMemory(ctx, node.Name)
+		if err != nil {
+			logger.Error(err, "Failed to get top 5 memory usage pods")
+			return ctrl.Result{}, err
+		}
+		for _, item := range topMemoryUsagesPod {
+			logger.Info(fmt.Sprintf("Pod %s memory usage: %d bytes", item.pod.Name, item.memoryUsage))
+			err = handlers.DoSSA(ctx, kubeconfig, &item.pod, migrationMemoryNode)
+			if err != nil {
+				logger.Error(err, "Failed to do SSA")
+			}
+		}
+
+	}
 	// Reconcile periodically (adjust timing as needed)
 	return ctrl.Result{RequeueAfter: time.Minute}, nil
 
@@ -158,7 +194,7 @@ func (r *NodeMonitorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&corev1.Node{}).
 		Complete(r)
 }
-func (r *NodeMonitorReconciler) getCpuUsageForNode(node *corev1.Node, ctx context.Context) (float64, error) {
+func (r *NodeMonitorReconciler) getCpuUsageOnNode(node *corev1.Node, ctx context.Context) (float64, error) {
 	nodeMetrics, err := r.MetricsClient.MetricsV1beta1().NodeMetricses().Get(ctx, node.Name, metav1.GetOptions{})
 	if err != nil {
 		logger.Error(err, "Failed to get node metrics")
@@ -174,23 +210,80 @@ func (r *NodeMonitorReconciler) getCpuUsageForNode(node *corev1.Node, ctx contex
 
 }
 
-// Example function to get memory usage
-func (r *NodeMonitorReconciler) getNodeMemoryUsage(ctx context.Context, nodeName string) (int64, error) {
+func (r *NodeMonitorReconciler) getNodeMemoryUsageRate(ctx context.Context, nodeName string) (float64, error) {
+	// Get node metrics (used memory)
 	nodeMetrics, err := r.MetricsClient.MetricsV1beta1().NodeMetricses().Get(ctx, nodeName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Node metrics not available
 			return -1, fmt.Errorf("node metrics not found for node %s", nodeName)
 		}
-		// Handle other types of errors
 		return -1, fmt.Errorf("failed to get node metrics: %v", err)
 	}
 
-	// Get memory usage from nodeMetrics
-	memoryUsage := nodeMetrics.Usage[corev1.ResourceMemory]
+	// Get the used memory from nodeMetrics
+	usedMemory := nodeMetrics.Usage[corev1.ResourceMemory]
+	usedMemoryBytes := usedMemory.Value() // Memory usage in bytes
 
-	// Convert memory usage to an integer value in bytes
-	memoryUsageBytes := memoryUsage.Value() // returns memory usage in bytes
+	// Get the total memory (capacity) from the Node object
+	node, err := kubeClient.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
+	if err != nil {
+		return -1, fmt.Errorf("failed to get node information: %v", err)
+	}
 
-	return memoryUsageBytes, nil
+	// Get the total memory from node's capacity
+	totalMemory := node.Status.Capacity[corev1.ResourceMemory]
+	totalMemoryBytes := totalMemory.Value() // Total memory in bytes
+
+	// Calculate memory usage rate
+	memoryUsageRate := (float64(usedMemoryBytes) / float64(totalMemoryBytes)) * 100
+
+	return memoryUsageRate, nil
+}
+
+// Get top 5 pods with the most memory usage rate
+func (r *NodeMonitorReconciler) getTopFivePodsByMemory(ctx context.Context, nodeName string) ([]PodMemoryUsage, error) {
+	// 1. List all the pods on the node
+	pods, err := kubeClient.CoreV1().Pods("").List(ctx, metav1.ListOptions{
+		FieldSelector: "spec.nodeName=" + nodeName,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list pods on node: %w", err)
+	}
+
+	// 2. Collect memory usage for each pod
+	var podMemoryUsages []PodMemoryUsage
+	for _, pod := range pods.Items {
+		podMetrics, err := r.MetricsClient.MetricsV1beta1().PodMetricses(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
+		if err != nil {
+			fmt.Printf("Failed to get metrics for pod %s: %v\n", pod.Name, err)
+			continue
+		}
+
+		// Calculate total memory usage for the pod
+		totalMemoryUsage := int64(0)
+		for _, container := range podMetrics.Containers {
+			if memUsage, ok := container.Usage[corev1.ResourceMemory]; ok {
+				totalMemoryUsage += memUsage.Value() // Memory usage in bytes
+			}
+		}
+
+		podMemoryUsages = append(podMemoryUsages, PodMemoryUsage{
+			pod:         pod,
+			memoryUsage: totalMemoryUsage,
+		})
+	}
+
+	// 3. Sort pods by memory usage
+	sort.Slice(podMemoryUsages, func(i, j int) bool {
+		return podMemoryUsages[i].memoryUsage > podMemoryUsages[j].memoryUsage
+	})
+
+	// 4. Return the top 5 pods
+	topPods := podMemoryUsages
+	if len(podMemoryUsages) > 5 {
+		topPods = podMemoryUsages[:5]
+	}
+
+	return topPods, nil
 }
