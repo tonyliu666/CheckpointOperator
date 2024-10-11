@@ -19,21 +19,17 @@ func main() {
 		if newPodName == "" || nameSpace == "" || nodeName == "" {
 			continue
 		}
-		alive, state := handler.AliveCheck(nameSpace, newPodName, nodeName)
 
-		if alive {
-			log.Info("The ", newPodName, " pod is alive on the ", nodeName, " node")
+		log.Info("The ", newPodName, " pod is alive on the ", nodeName, " node")
+		log.Info("newpodname: ", newPodName, " namespace: ", nameSpace, " nodeName: ", nodeName)
 
-			// call the delete old pod function, oldPodName is the remain string without the checkpoint-
-			oldPodName := newPodName[strings.Index(newPodName, "-")+1:]
-			clear:=handler.DeleteOldPod(nameSpace, oldPodName)
-			if !clear{
-				log.Error("unable to delete the old pod")
-			}
-		} else {
-			// TODO: handle the case that the pod is not alive
-			log.Error("The state of the ", newPodName, " pod is ", state)
-			log.Error("The ", newPodName, " pod is not alive on the ", nodeName, " node")
+		// call the delete old pod function, oldPodName is the remain string without the checkpoint-
+		oldPodName := newPodName[strings.Index(newPodName, "-")+1:]
+		// namespace is wrong, this is the original namespace
+		clear := handler.DeleteOldPod(nameSpace, oldPodName)
+		if !clear {
+			log.Error("unable to delete the old pod")
 		}
+
 	}
 }

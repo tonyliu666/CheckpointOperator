@@ -115,14 +115,14 @@ func (r *NodeMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	cpu_usage_rate_maps[node.Name] = cpuPercentage
 
 	// If CPU usage exceeds 70%, deploy the custom resource
-	if cpuPercentage > 5 {
+	if cpuPercentage > 70 {
 		logger.Info(fmt.Sprintf("Node %s CPU usage exceeds threshold (%.2f%%). Deploying Migration custom resource!", node.Name, cpuPercentage))
 
 		// lists all the pods on this node
 		pods, err := kubeClient.CoreV1().Pods("").List(ctx, metav1.ListOptions{
 			FieldSelector: "spec.nodeName=" + node.Name,
 		})
-		// logger.Info("how many pods on this node", "pod number", len(pods.Items))
+
 		if err != nil {
 			logger.Error(err, "Failed to list pods")
 			return ctrl.Result{}, err
@@ -137,35 +137,12 @@ func (r *NodeMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 		// go through each pod in pods and replace the podname field in the yaml with the pod name
 		for _, pod := range pods.Items {
-			
-			logger.Info("Pod name", "pod name", pod.Name)
-			
-			err = handlers.DoSSA(ctx,kubeconfig,&pod, migrationNode)
+
+			// do the server side apply
+			err = handlers.DoSSA(ctx, kubeconfig, &pod, migrationNode)
 			if err != nil {
 				logger.Error(err, "Failed to do SSA")
 			}
-			
-			// Apply the custom resource using the controller-runtime client
-			// TODO: needs to fix the error: failed to call webhook: Post \"https://practice-webhook-service.practice-system.svc:443/mutate-api-my-domain-v1alpha1-migration?timeout=10s
-			
-			// check if the custom resource already exists
-			// err = r.Client.Get(ctx, client.ObjectKeyFromObject(obj), obj)
-			// if err != nil {
-			// 	// not yet created 
-			// 	err = r.Client.Create(ctx, obj)
-			// 	if err != nil {
-			// 		logger.Error(err, "Failed to create Migration custom resource")
-			// 		return ctrl.Result{}, err
-			// 	}
-			// 	logger.Info("Successfully created Migration custom resource")
-			// } else {
-			// 	err = r.Client.Update(ctx, obj)
-			// 	if err != nil {
-			// 		logger.Error(err, "Failed to create Migration custom resource")
-			// 		return ctrl.Result{}, err
-			// 	}
-			// 	logger.Info("Successfully updated Migration custom resource")
-			// }
 		}
 	}
 
@@ -188,13 +165,32 @@ func (r *NodeMonitorReconciler) getCpuUsageForNode(node *corev1.Node, ctx contex
 		return -1, err
 	}
 
-	// logger.Info(fmt.Sprintf("Node %s timestamp: %s", node.Name, nodeMetrics.Timestamp))
-
 	// Calculate CPU usage percentage
 	usageCPU := nodeMetrics.Usage.Cpu().MilliValue()
 	allocatableCPU := node.Status.Allocatable.Cpu().MilliValue()
 	cpuPercentage := float64(usageCPU) / float64(allocatableCPU) * 100
-	// logger.Info(fmt.Sprintf("Node %s CPU usage: %.2f%%", node.Name, cpuPercentage))
+	logger.Info(fmt.Sprintf("Node %s CPU usage: %.2f%%", node.Name, cpuPercentage))
 	return cpuPercentage, nil
 
+}
+
+// Example function to get memory usage
+func (r *NodeMonitorReconciler) getNodeMemoryUsage(ctx context.Context, nodeName string) (int64, error) {
+	nodeMetrics, err := r.MetricsClient.MetricsV1beta1().NodeMetricses().Get(ctx, nodeName, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// Node metrics not available
+			return -1, fmt.Errorf("node metrics not found for node %s", nodeName)
+		}
+		// Handle other types of errors
+		return -1, fmt.Errorf("failed to get node metrics: %v", err)
+	}
+
+	// Get memory usage from nodeMetrics
+	memoryUsage := nodeMetrics.Usage[corev1.ResourceMemory]
+
+	// Convert memory usage to an integer value in bytes
+	memoryUsageBytes := memoryUsage.Value() // returns memory usage in bytes
+
+	return memoryUsageBytes, nil
 }

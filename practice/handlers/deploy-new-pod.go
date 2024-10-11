@@ -82,9 +82,8 @@ func DeployPodOnNewNode(pod *corev1.Pod) error {
 			log.Log.Error(err, "unable to deploy new pod")
 			return fmt.Errorf("unable to create pod: %w", err)
 		}
-		// TODO: notify the other service to watch this new pod created successfully or not
-		// send kafka message to broker, default namesapce in the later will be changed to random namespace
-		if err := ProduceMessageToDifferentTopics(newpod.Name, util.DestinationNamespace, nodeName); err != nil {
+
+		if err := ProduceMessageToDifferentTopics(newpod.Name, util.SourceNamespace, nodeName); err != nil {
 			log.Log.Error(err, "failed to produce different message")
 			return fmt.Errorf("failed to produce message: %w", err)
 		}
