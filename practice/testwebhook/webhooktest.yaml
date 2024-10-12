@@ -1,18 +1,25 @@
-apiVersion: v1
-kind: Pod 
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: webhooktest
   labels:
     app: webhooktest
   namespace: docker-registry
 spec:
-  containers:
-  - name: webhooktest
-    image: tonyliu666/testwebhook:latest
-    ports:
-    - containerPort: 8080
-  imagePullSecrets:
-    - name: regcred
+  replicas: 3
+  selector:
+    matchLabels:
+      app: webhooktest
+  template:
+    metadata:
+      labels:
+        app: webhooktest
+    spec:
+      containers:
+      - name: webhooktest
+        image: tonyliu666/testwebhook:latest
+        ports:
+        - containerPort: 8080
   
 --- 
 # deploy pod as a service 

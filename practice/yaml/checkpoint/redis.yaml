@@ -1,10 +1,10 @@
 apiVersion: v1 
 kind: Pod
 metadata: 
-  name: redis3
+  name: redis31
   namespace: default
 spec:
   containers:
-  - name: redis3
+  - name: redis31
     image: redis:latest
   nodeName: workernode01

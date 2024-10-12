@@ -37,13 +37,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	apiv1alpha1 "tony123.tw/api/v1alpha1"
 	"tony123.tw/handlers"
-	util "tony123.tw/util"
+	"tony123.tw/util"
 )
 
 // MigrationReconciler reconciles a Migration object
 type MigrationReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme        *runtime.Scheme
+	migrationSpec *apiv1alpha1.MigrationSpec
 }
 
 type kubeletCheckpointResponse struct {
@@ -76,30 +77,31 @@ func (r *MigrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// get the migration object
 	migration := &apiv1alpha1.Migration{}
 	err := r.Get(ctx, req.NamespacedName, migration)
+	r.migrationSpec = &migration.Spec
 
 	// fill the variable in util/global.go
-	util.FillinGlobalVariables(migration)
+	util.FillinGlobalVariables(r.migrationSpec.PodName, r.migrationSpec.Deployment, r.migrationSpec.Namespace, r.migrationSpec.DestinationNode, r.migrationSpec.DestinationNamespace, r.migrationSpec.Specify)
 
 	if err != nil {
 		l.Error(err, "unable to fetch the migration object")
 		return ctrl.Result{RequeueAfter: 30 * time.Second}, err
 	}
-	if len(util.Specify) != 0 {
+	if len(r.migrationSpec.Specify) != 0 {
 		// checkpoint the specified pods in the given namespace
 		listOptions := &client.ListOptions{
-			Namespace: util.SourceNamespace,
+			Namespace: r.migrationSpec.Namespace,
 		}
-		err = CheckpointSinglePod(ctx, r, listOptions, true)
+		err = r.checkpointSinglePod(ctx, listOptions, true)
 		if err != nil {
 			l.Error(err, "unable to checkpoint the specified pods")
 			return ctrl.Result{RequeueAfter: 30 * time.Second}, err
 		}
 	} else {
 		// check if the deployment field is empty
-		if migration.Spec.Deployment != "" {
-			CheckpointDeployment(ctx, r)
+		if r.migrationSpec.Deployment != "" {
+			r.checkpointDeployment(ctx)
 		} else {
-			CheckpointSinglePod(ctx, r, nil, false)
+			r.checkpointSinglePod(ctx, nil, false)
 		}
 	}
 	// TODO(user): your logic here
@@ -108,15 +110,15 @@ func (r *MigrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	return ctrl.Result{}, nil
 }
-func CheckpointDeployment(ctx context.Context, r *MigrationReconciler) error {
+func (r *MigrationReconciler) checkpointDeployment(ctx context.Context) error {
 	// check all the pods in the deployment and checkpoint them
 	// get the deployment
 	deployment := &appsv1.Deployment{}
 	// create a namespace that equals to the namespace of the migration object
 
-	namespace := util.SourceNamespace
+	namespace := r.migrationSpec.Namespace
 	ns := types.NamespacedName{
-		Name:      util.Deployment,
+		Name:      r.migrationSpec.Deployment,
 		Namespace: namespace,
 	}
 	err := r.Get(ctx, ns, deployment)
@@ -128,7 +130,6 @@ func CheckpointDeployment(ctx context.Context, r *MigrationReconciler) error {
 	labels := deployment.Spec.Selector
 	labelSelector, err := metav1.LabelSelectorAsSelector(labels)
 	if err != nil {
-		fmt.Println("unable to get the label selector")
 		log.Log.Error(err, "unable to get the label selector")
 		return err
 	}
@@ -138,7 +139,7 @@ func CheckpointDeployment(ctx context.Context, r *MigrationReconciler) error {
 		LabelSelector: labelSelector,
 	}
 	// get the pods in the deployment
-	err = CheckpointSinglePod(ctx, r, listOptions, false)
+	err = r.checkpointSinglePod(ctx, listOptions, false)
 	if err != nil {
 		log.Log.Error(err, "unable to checkpoint the deployment")
 		return err
@@ -147,10 +148,10 @@ func CheckpointDeployment(ctx context.Context, r *MigrationReconciler) error {
 
 }
 
-func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, listOptions *client.ListOptions, specifyOrNot bool) error {
+func (r *MigrationReconciler) checkpointSinglePod(ctx context.Context, listOptions *client.ListOptions, specifyOrNot bool) error {
 	podList := &corev1.PodList{}
 	logger := log.FromContext(ctx)
-	err := filterPods(listOptions, podList, ctx, r, logger, specifyOrNot)
+	err := r.filterPods(listOptions, podList, ctx, logger, specifyOrNot)
 	if err != nil {
 		logger.Error(err, "unable to filter the pods")
 		return err
@@ -164,7 +165,7 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, listOption
 					"https://%s:%d/checkpoint/%s/%s/%s",
 					pod.Status.HostIP,
 					10250,
-					util.SourceNamespace,
+					pod.Namespace,
 					pod.Name,
 					container.Name,
 				)
@@ -200,13 +201,13 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, listOption
 				}
 
 				// find the pod ip of registry pod
-				registryIp, err := handlers.ReturnRegistryIP(clientset, util.DestinationNode)
+				registryIp, err := handlers.ReturnRegistryIP(clientset, r.migrationSpec.DestinationNamespace)
 				if err != nil {
 					log.Log.Error(err, "unable to get the registry ip")
 					return err
 				}
 				// destination node should pull the original image(eg: postgresql:latest)
-				err = handlers.OriginalImageChecker(&pod, util.DestinationNode)
+				err = handlers.OriginalImageChecker(&pod, r.migrationSpec.DestinationNode)
 				if err != nil {
 					log.Log.Error(err, "unable to pull the original image")
 					return err
@@ -230,8 +231,9 @@ func CheckpointSinglePod(ctx context.Context, r *MigrationReconciler, listOption
 	return nil
 }
 
-func filterPods(listOptions *client.ListOptions, podList *corev1.PodList,
-	ctx context.Context, r *MigrationReconciler, logger logr.Logger, specifyOrNot bool) error {
+func (r *MigrationReconciler) filterPods(listOptions *client.ListOptions, podList *corev1.PodList,
+	ctx context.Context, logger logr.Logger, specifyOrNot bool) error {
+
 	if listOptions == nil {
 		err := r.List(ctx, podList)
 		if err != nil {
@@ -240,7 +242,7 @@ func filterPods(listOptions *client.ListOptions, podList *corev1.PodList,
 		}
 		// only keep the pod whose name is the same as the podname in the migration object
 		for _, pod := range podList.Items {
-			if pod.Name == util.PodName {
+			if pod.Name == r.migrationSpec.PodName {
 				// only keep the pod whose name is the same as the podname in the migration object
 				podList.Items = []corev1.Pod{pod}
 			}
@@ -253,7 +255,7 @@ func filterPods(listOptions *client.ListOptions, podList *corev1.PodList,
 				logger.Error(err, "unable to list the pods")
 				return err
 			}
-			for _, pod := range util.Specify {
+			for _, pod := range r.migrationSpec.Specify {
 				found := false
 				for i, podItem := range newpodList.Items {
 					// if the podItem.Name contains the pod name, then add it to the newPodList
@@ -277,13 +279,13 @@ func filterPods(listOptions *client.ListOptions, podList *corev1.PodList,
 			}
 			// Now I can't handle this case: podname: nginx, deployment: nginx recorded in custom resource, the nginx-deployment will also be checkpointed
 			for i, pod := range podList.Items {
-				if strings.HasPrefix(pod.Name, util.Deployment) {
+				// TODO: add the pods name + pods namespace as a key in the util.ProcessPodsMap
+				// Because the validation webhook doesn't check the pods in the deployment
+				util.FillinGlobalVariables(pod.Name, "", r.migrationSpec.Namespace, r.migrationSpec.DestinationNode, r.migrationSpec.DestinationNamespace, r.migrationSpec.Specify)
+				if strings.HasPrefix(pod.Name, r.migrationSpec.PodName) {
 					filteredPods = append(filteredPods, podList.Items[i])
 				}
 			}
-			// podList = &corev1.PodList{
-			// 	Items: filteredPods,
-			// }
 			podList.Items = filteredPods
 		}
 

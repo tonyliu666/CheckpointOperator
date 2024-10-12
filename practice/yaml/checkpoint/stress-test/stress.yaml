@@ -23,11 +23,6 @@ spec:
   - name: stress
     image: polinux/stress
     command: ["stress"]
-    args: ["--cpu", "1", "--io", "1", "--vm", "1", "--vm-bytes", "128M", "--verbose"]
-    # Uncomment and set resource limits if needed
-    # resources:
-    #   limits:
-    #     memory: "256Mi"
-    #     cpu: "1"
+    args: ["--cpu", "1", "--io", "1", "--vm", "4", "--vm-bytes", "128M", "--verbose"]
   restartPolicy: Never
   nodeName: workernode01

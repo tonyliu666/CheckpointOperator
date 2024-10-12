@@ -30,6 +30,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+	"tony123.tw/util"
 )
 
 // log is for logging in this package.
@@ -113,9 +114,8 @@ func (r *Migration) validateMigration() error {
 	// create a clientset
 	clientset, err := createClientSet()
 	if r.Spec.PodName != "" {
-
 		if err != nil {
-			return fmt.Errorf("unable to create clientset", err)
+			return fmt.Errorf("unable to create clientset %v", err)
 		}
 		_, err = clientset.CoreV1().Pods(r.Spec.Namespace).Get(context.TODO(), r.Spec.PodName, metav1.GetOptions{})
 		if err != nil {
@@ -138,6 +138,20 @@ func (r *Migration) validateMigration() error {
 			}
 		}
 	}
+	// check the custom resource has been deployed during the process
+	// if r.Spec.PodName + r.Spec.Namespace  in util.ProcessPodsMap then return error
+	if r.Spec.PodName != "" {
+		if _, ok := util.ProcessPodsMap[r.Spec.PodName]; ok {
+			return fmt.Errorf("the pod %s in namespace %s is being processed sorry for this moment only one specific pod name among the cluster can be accepted", r.Spec.PodName, r.Spec.Namespace)
+		}
+	}
+	if r.Spec.Specify != nil {
+		for _, podName := range r.Spec.Specify {
+			if _, ok := util.ProcessPodsMap[podName]; ok {
+				return fmt.Errorf("the pod %s  is being processed. sorry for this moment only one specific pod name among the cluster can be accepted", podName)
+			}
+		}
+	}
 
 	return nil
 }
@@ -156,7 +170,7 @@ func createClientSet() (*kubernetes.Clientset, error) {
 	// Create Kubernetes client
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create clientset", err)
+		return nil, fmt.Errorf("unable to create clientset %v", err)
 	}
 	return clientset, nil
 }

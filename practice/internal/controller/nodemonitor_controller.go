@@ -138,9 +138,14 @@ func (r *NodeMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 				migrationCPUNode = nodeName
 			}
 		}
+		logger.Info(fmt.Sprintf("pod is going to be migrated to node %s", migrationCPUNode))
+		logger.Info("cpu usage rate maps", "cpu_usage_rate_maps", cpu_usage_rate_maps)
 
 		// go through each pod in pods and replace the podname field in the yaml with the pod name
 		for _, pod := range pods.Items {
+			if pod.Namespace == "kube-system" || pod.Namespace == "kube-public" || pod.Namespace == "kube-node-lease" {
+				continue
+			}
 			// do the server side apply
 			err = handlers.DoSSA(ctx, kubeconfig, &pod, migrationCPUNode)
 			if err != nil {
@@ -155,11 +160,11 @@ func (r *NodeMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		logger.Error(err, fmt.Sprintf("Failed to count memory usage rate for %s node", node.Name))
 		return ctrl.Result{}, err
 	}
-	logger.Info(fmt.Sprintf("Node %s memory usage rate: %.2f%%", node.Name, memoryUsageRate))
+	// logger.Info(fmt.Sprintf("Node %s memory usage rate: %.2f%%", node.Name, memoryUsageRate))
 	// update the memory_usage_rate_maps
 	memory_usage_rate_maps[node.Name] = memoryUsageRate
 
-	if memoryUsageRate > 40 {
+	if memoryUsageRate > 80 {
 		// find the least memory usage node to migrate the pod
 		for nodeName, memoryUsage := range memory_usage_rate_maps {
 			if memoryUsage < memoryUsageRate {
@@ -174,7 +179,12 @@ func (r *NodeMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			return ctrl.Result{}, err
 		}
 		for _, item := range topMemoryUsagesPod {
+			// avoid migrating kube-system pods
+			if item.pod.Namespace == "kube-system" || item.pod.Namespace == "kube-public" || item.pod.Namespace == "kube-node-lease" {
+				continue
+			}
 			logger.Info(fmt.Sprintf("Pod %s memory usage: %d bytes", item.pod.Name, item.memoryUsage))
+
 			err = handlers.DoSSA(ctx, kubeconfig, &item.pod, migrationMemoryNode)
 			if err != nil {
 				logger.Error(err, "Failed to do SSA")
@@ -183,7 +193,7 @@ func (r *NodeMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	}
 	// Reconcile periodically (adjust timing as needed)
-	return ctrl.Result{RequeueAfter: time.Minute}, nil
+	return ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
 
 }
 
@@ -205,9 +215,8 @@ func (r *NodeMonitorReconciler) getCpuUsageOnNode(node *corev1.Node, ctx context
 	usageCPU := nodeMetrics.Usage.Cpu().MilliValue()
 	allocatableCPU := node.Status.Allocatable.Cpu().MilliValue()
 	cpuPercentage := float64(usageCPU) / float64(allocatableCPU) * 100
-	logger.Info(fmt.Sprintf("Node %s CPU usage: %.2f%%", node.Name, cpuPercentage))
+	// logger.Info(fmt.Sprintf("Node %s CPU usage: %.2f%%", node.Name, cpuPercentage))
 	return cpuPercentage, nil
-
 }
 
 func (r *NodeMonitorReconciler) getNodeMemoryUsageRate(ctx context.Context, nodeName string) (float64, error) {

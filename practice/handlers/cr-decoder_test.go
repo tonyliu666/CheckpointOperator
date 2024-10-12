@@ -6,7 +6,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-
 func TestDecodeCustomResource(t *testing.T) {
 	// Decode the YAML into an unstructured object
 	obj := &unstructured.Unstructured{}

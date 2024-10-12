@@ -35,7 +35,7 @@ func DoSSA(ctx context.Context, cfg *rest.Config, pod *corev1.Pod, migrationNode
 	if err != nil {
 		return err
 	}
-
+	// migrate the pod to the smae namespace but different node
 	migrationYAML := fmt.Sprintf(`
 apiVersion: api.my.domain/v1alpha1
 kind: Migration
@@ -50,10 +50,11 @@ spec:
   deployment: ""
   namespace: %s
   destinationNode: %s
-  destinationNamespace: migration
+  destinationNamespace: %s
   specify: []
-`, time.Now().Format("20060102-150405"), pod.Name, pod.Namespace, migrationNode)
+`, time.Now().Format("20060102-150405"), pod.Name, pod.Namespace, migrationNode, pod.Namespace)
 
+	fmt.Println("pod " + pod.Name + "pod node " + pod.Spec.NodeName + "pod namespace " + pod.Namespace + "is going to be migrated to node " + migrationNode)
 	// 3.Decode the YAML into an unstructured object
 	obj := &unstructured.Unstructured{}
 	_, gvk, err := decUnstructured.Decode([]byte(migrationYAML), nil, obj)

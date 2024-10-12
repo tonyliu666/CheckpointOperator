@@ -181,7 +181,7 @@ func main() {
 			kubeconfig = kubeConfigFilePath
 		}
 
-		fmt.Println("kubeconfig: " + kubeconfig)
+		// fmt.Println("kubeconfig: " + kubeconfig)
 
 		c, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 		if err != nil {
