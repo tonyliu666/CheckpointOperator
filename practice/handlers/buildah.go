@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"context"
-	"fmt"
+	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -13,11 +13,12 @@ import (
 
 func int64Ptr(i int64) *int64 { return &i }
 
-func BuildahPodPushImage(index int, nodeName string, nameSpace string, checkpoint string, registryIp string) error {
+func BuildahPodPushImage(nodeName string, nameSpace string, checkpoint string, registryIp string) error {
 	podName := util.ModifyCheckpointToImageName(checkpoint)
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "buildah-job-" + fmt.Sprintf("%d", index),
+			// support millisecond 
+			Name: "buildah-job-" + time.Now().Format("2006-01-02-15-04-05-000"),
 			// TODO: change the name if I want to sent all the images of deployment to the registry
 		},
 		// set ttlSecondsAfterFinished to 30 seconds

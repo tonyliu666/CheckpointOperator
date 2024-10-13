@@ -82,6 +82,7 @@ func (r *MigrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// fill the variable in util/global.go
 	util.FillinGlobalVariables(r.migrationSpec.PodName, r.migrationSpec.Deployment, r.migrationSpec.Namespace, r.migrationSpec.DestinationNode, r.migrationSpec.DestinationNamespace, r.migrationSpec.Specify)
 
+	l.Info("pod needs to be checkpointed", "podName", r.migrationSpec.PodName)
 	l.Info("ProcessPodsMap", "podName", util.ProcessPodsMap)
 	if err != nil {
 		l.Error(err, "unable to fetch the migration object")
@@ -158,7 +159,7 @@ func (r *MigrationReconciler) checkpointSinglePod(ctx context.Context, listOptio
 		return err
 	}
 
-	for i, pod := range podList.Items {
+	for _, pod := range podList.Items {
 		// checkpoint the container in each pod
 		if pod.Status.Phase == corev1.PodRunning {
 			for _, container := range pod.Spec.Containers {
@@ -215,7 +216,7 @@ func (r *MigrationReconciler) checkpointSinglePod(ctx context.Context, listOptio
 				}
 
 				// buildah deployment deployed on the node which is same as the node of the pod
-				err = handlers.BuildahPodPushImage(i, pod.Spec.NodeName, "docker-registry", kubeletResponse.Items[0], registryIp)
+				err = handlers.BuildahPodPushImage(pod.Spec.NodeName, "docker-registry", kubeletResponse.Items[0], registryIp)
 				if err != nil {
 					log.Log.Error(err, "unable to push image to registry")
 					return err

@@ -45,6 +45,7 @@ func DeployPodOnNewNode(pod *corev1.Pod) error {
 		// oldPodName is the key that remove the checkpoint- prefix from the pod name
 		oldPodName := strings.TrimPrefix(podName, "checkpoint-")
 		info, ok := util.ProcessPodsMap[oldPodName].(util.MigrationInfo)
+		log.Log.Info("oldPodName", "oldPodName", oldPodName)
 		
 		if !ok {
 			log.Log.Error(err, "unable to get the information of the pod")
