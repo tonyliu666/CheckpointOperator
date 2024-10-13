@@ -20,6 +20,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
+	pointer "k8s.io/utils/pointer"
 )
 
 var decUnstructured = yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
@@ -54,7 +55,7 @@ spec:
   specify: []
 `, time.Now().Format("20060102-150405"), pod.Name, pod.Namespace, migrationNode, pod.Namespace)
 
-	fmt.Println("pod " + pod.Name + "pod node " + pod.Spec.NodeName + "pod namespace " + pod.Namespace + "is going to be migrated to node " + migrationNode)
+	fmt.Println("pod " + pod.Name + " pod node " + pod.Spec.NodeName + " pod namespace " + pod.Namespace + " is going to be migrated to node " + migrationNode)
 	// 3.Decode the YAML into an unstructured object
 	obj := &unstructured.Unstructured{}
 	_, gvk, err := decUnstructured.Decode([]byte(migrationYAML), nil, obj)
@@ -85,6 +86,7 @@ spec:
 	// 7. Create or Update the object with SSA
 	_, err = dr.Patch(ctx, obj.GetName(), types.ApplyPatchType, data, metav1.PatchOptions{
 		FieldManager: "node-controller",
+		Force:        pointer.BoolPtr(true),
 	})
 	if err != nil {
 		return err

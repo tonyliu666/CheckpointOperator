@@ -82,6 +82,7 @@ func (r *MigrationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// fill the variable in util/global.go
 	util.FillinGlobalVariables(r.migrationSpec.PodName, r.migrationSpec.Deployment, r.migrationSpec.Namespace, r.migrationSpec.DestinationNode, r.migrationSpec.DestinationNamespace, r.migrationSpec.Specify)
 
+	l.Info("ProcessPodsMap", "podName", util.ProcessPodsMap)
 	if err != nil {
 		l.Error(err, "unable to fetch the migration object")
 		return ctrl.Result{RequeueAfter: 30 * time.Second}, err

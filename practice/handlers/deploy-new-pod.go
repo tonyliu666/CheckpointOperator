@@ -52,6 +52,7 @@ func DeployPodOnNewNode(pod *corev1.Pod) error {
 		}
 		// remove the pod from the ProcessPodsMap
 		delete(util.ProcessPodsMap, oldPodName)
+		log.Log.Info("Pod removed from the ProcessPodsMap", "podName", util.ProcessPodsMap)
 
 		imageName := podName + ":latest"
 		podIP, err := util.GetPodHostPort(pod, "docker-registry")

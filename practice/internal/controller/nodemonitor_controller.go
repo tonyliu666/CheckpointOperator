@@ -48,6 +48,11 @@ type PodMemoryUsage struct {
 	memoryUsage int64
 }
 
+type PodCPUUsage struct {
+	pod         corev1.Pod
+	cpuUsage int64
+}
+
 var kubeconfig *rest.Config
 var kubeClient *clientset.Clientset
 var cpu_usage_rate_maps = make(map[string]float64)
@@ -88,7 +93,6 @@ func init() {
 func (r *NodeMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger = log.FromContext(ctx)
 	if r.MetricsClient == nil {
-		logger.Info("kubeconfig", "kubeconfig is", kubeconfig)
 		mc, err := metricsclientset.NewForConfig(kubeconfig)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -107,6 +111,10 @@ func (r *NodeMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		logger.Error(err, "Failed to get Node")
 		return ctrl.Result{}, err
 	}
+	// if node labels exists node-role.kubernetes.io/control-plane, return 
+	if _, ok := node.Labels["node-role.kubernetes.io/control-plane"]; ok {
+		return ctrl.Result{}, nil
+	}
 
 	// Fetch node metrics
 	cpuPercentage, err := r.getCpuUsageOnNode(&node, ctx)
@@ -114,18 +122,17 @@ func (r *NodeMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		logger.Error(err, fmt.Sprint("Failed to get CPU usage for %s node", node.Name))
 		return ctrl.Result{}, err
 	}
+	
 
 	// update the cpu_usage_rate_maps
 	cpu_usage_rate_maps[node.Name] = cpuPercentage
+	logger.Info("cpu usage rate maps", "cpu_usage_rate_maps", cpu_usage_rate_maps)
 
 	// If CPU usage exceeds 70%, deploy the custom resource
 	if cpuPercentage > 70 {
 		logger.Info(fmt.Sprintf("Node %s CPU usage exceeds threshold (%.2f%%). Deploying Migration custom resource!", node.Name, cpuPercentage))
 
-		// lists all the pods on this node
-		pods, err := kubeClient.CoreV1().Pods("").List(ctx, metav1.ListOptions{
-			FieldSelector: "spec.nodeName=" + node.Name,
-		})
+		TopFivePodsByCPU, err := r.getTopFivePodsByCPU(ctx, node.Name)
 
 		if err != nil {
 			logger.Error(err, "Failed to list pods")
@@ -138,16 +145,19 @@ func (r *NodeMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 				migrationCPUNode = nodeName
 			}
 		}
-		logger.Info(fmt.Sprintf("pod is going to be migrated to node %s", migrationCPUNode))
-		logger.Info("cpu usage rate maps", "cpu_usage_rate_maps", cpu_usage_rate_maps)
-
+		logger.Info(fmt.Sprintf("pod is going to be migrated to node %s ", migrationCPUNode))
+		//logger.Info("cpu usage rate maps", "cpu_usage_rate_maps", cpu_usage_rate_maps)
+		
 		// go through each pod in pods and replace the podname field in the yaml with the pod name
-		for _, pod := range pods.Items {
-			if pod.Namespace == "kube-system" || pod.Namespace == "kube-public" || pod.Namespace == "kube-node-lease" {
+		for _, item := range TopFivePodsByCPU {
+			// avoid migrating kube-system pods
+			ok := checkIsValidNamespace(item.pod.Namespace)
+			if !ok {
 				continue
 			}
-			// do the server side apply
-			err = handlers.DoSSA(ctx, kubeconfig, &pod, migrationCPUNode)
+			logger.Info(fmt.Sprintf("Pod %s CPU usage: %d millicores", item.pod.Name, item.cpuUsage))
+
+			err = handlers.DoSSA(ctx, kubeconfig, &item.pod, migrationCPUNode)
 			if err != nil {
 				logger.Error(err, "Failed to do SSA")
 			}
@@ -163,6 +173,7 @@ func (r *NodeMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	// logger.Info(fmt.Sprintf("Node %s memory usage rate: %.2f%%", node.Name, memoryUsageRate))
 	// update the memory_usage_rate_maps
 	memory_usage_rate_maps[node.Name] = memoryUsageRate
+	logger.Info("memory usage rate maps", "memory_usage_rate_maps", memory_usage_rate_maps)
 
 	if memoryUsageRate > 80 {
 		// find the least memory usage node to migrate the pod
@@ -180,7 +191,8 @@ func (r *NodeMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		}
 		for _, item := range topMemoryUsagesPod {
 			// avoid migrating kube-system pods
-			if item.pod.Namespace == "kube-system" || item.pod.Namespace == "kube-public" || item.pod.Namespace == "kube-node-lease" {
+			ok := checkIsValidNamespace(item.pod.Namespace)
+			if !ok {
 				continue
 			}
 			logger.Info(fmt.Sprintf("Pod %s memory usage: %d bytes", item.pod.Name, item.memoryUsage))
@@ -295,4 +307,50 @@ func (r *NodeMonitorReconciler) getTopFivePodsByMemory(ctx context.Context, node
 	}
 
 	return topPods, nil
+}
+func (r *NodeMonitorReconciler) getTopFivePodsByCPU(ctx context.Context, nodeName string) ([]PodCPUUsage, error) {
+	// 1. List all the pods on the node
+	pods, err := kubeClient.CoreV1().Pods("").List(ctx, metav1.ListOptions{
+		FieldSelector: "spec.nodeName=" + nodeName,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list pods on node: %w", err)
+	}
+
+	// 2. Collect memory usage for each pod
+	var TopFivePodCPUUsage []PodCPUUsage
+	for _, pod := range pods.Items {
+		podMetrics, err := r.MetricsClient.MetricsV1beta1().PodMetricses(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
+		if err != nil {
+			fmt.Printf("Failed to get metrics for pod %s: %v\n", pod.Name, err)
+			continue
+		}
+
+		// Calculate total memory usage for the pod
+		totalCPUUsage := int64(0)
+		for _, container := range podMetrics.Containers {
+			if cpuUsage, ok := container.Usage[corev1.ResourceCPU]; ok {
+				totalCPUUsage += cpuUsage.Value() // Memory usage in bytes
+			}
+		}
+
+		TopFivePodCPUUsage = append(TopFivePodCPUUsage, PodCPUUsage{
+			pod:         pod,
+			cpuUsage: totalCPUUsage,
+		})
+	}
+	return TopFivePodCPUUsage, nil
+}
+
+func checkIsValidNamespace(namespace string) bool {
+	switch namespace {
+	case "kube-system", "kube-public", "kube-node-lease":
+		return false
+	case "calico-apiserver", "calico-system", "cert-manager", "tigera-operator":
+		return false
+	case "kafka", "docker-registry", "practice-system", "restore":
+		return false
+	}
+	
+	return true
 }
