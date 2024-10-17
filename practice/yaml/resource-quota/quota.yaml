@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: cpu-quota
+  namespace: ollama
+spec:
+  hard:
+    requests.cpu: "2"  # Max total CPU requested by all pods in this namespace
+    limits.cpu: "4"    # Max CPU usage across all pods

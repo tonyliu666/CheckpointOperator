@@ -2,11 +2,18 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: machine-learning
-  namespace: default
+  namespace: ollama
 spec:
   containers:
   - name: transformers
     image: tonyliu666/transformer:latest
-  imagePullSecrets:
-    - name: regcred
-  nodeName: ip-172-31-23-29
+    resources:
+      requests:
+        cpu: "2"
+      limits:
+        cpu: "4"
+  nodeName: workernode01
+
+
+  
+  

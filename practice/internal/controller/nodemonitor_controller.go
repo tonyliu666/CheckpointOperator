@@ -119,17 +119,17 @@ func (r *NodeMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	// Fetch node metrics
 	cpuPercentage, err := r.getCpuUsageOnNode(&node, ctx)
 	if err != nil {
-		logger.Error(err, fmt.Sprint("Failed to get CPU usage for %s node", node.Name))
+		logger.Error(err, "Failed to get CPU usage on node")
 		return ctrl.Result{}, err
 	}
 	
 
 	// update the cpu_usage_rate_maps
 	cpu_usage_rate_maps[node.Name] = cpuPercentage
-	logger.Info("cpu usage rate maps", "cpu_usage_rate_maps", cpu_usage_rate_maps)
+	// logger.Info("cpu usage rate maps", "cpu_usage_rate_maps", cpu_usage_rate_maps)
 
 	// If CPU usage exceeds 70%, deploy the custom resource
-	if cpuPercentage > 70 {
+	if cpuPercentage > 60 {
 		logger.Info(fmt.Sprintf("Node %s CPU usage exceeds threshold (%.2f%%). Deploying Migration custom resource!", node.Name, cpuPercentage))
 
 		TopFivePodsByCPU, err := r.getTopFivePodsByCPU(ctx, node.Name)
@@ -145,16 +145,18 @@ func (r *NodeMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 				migrationCPUNode = nodeName
 			}
 		}
-		logger.Info(fmt.Sprintf("pod is going to be migrated to node %s ", migrationCPUNode))
+		
 		//logger.Info("cpu usage rate maps", "cpu_usage_rate_maps", cpu_usage_rate_maps)
 		
 		// go through each pod in pods and replace the podname field in the yaml with the pod name
 		for _, item := range TopFivePodsByCPU {
 			// avoid migrating kube-system pods
+			
 			ok := checkIsValidNamespace(item.pod.Namespace)
 			if !ok {
 				continue
 			}
+			logger.Info(fmt.Sprintf("pod %s is going to be migrated to node %s ", item.pod.Name, migrationCPUNode))
 			logger.Info(fmt.Sprintf("Pod %s CPU usage: %d millicores", item.pod.Name, item.cpuUsage))
 
 			err = handlers.DoSSA(ctx, kubeconfig, &item.pod, migrationCPUNode)
@@ -173,9 +175,9 @@ func (r *NodeMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	// logger.Info(fmt.Sprintf("Node %s memory usage rate: %.2f%%", node.Name, memoryUsageRate))
 	// update the memory_usage_rate_maps
 	memory_usage_rate_maps[node.Name] = memoryUsageRate
-	logger.Info("memory usage rate maps", "memory_usage_rate_maps", memory_usage_rate_maps)
+	// logger.Info("memory usage rate maps", "memory_usage_rate_maps", memory_usage_rate_maps)
 
-	if memoryUsageRate > 80 {
+	if memoryUsageRate > 70 {
 		// find the least memory usage node to migrate the pod
 		for nodeName, memoryUsage := range memory_usage_rate_maps {
 			if memoryUsage < memoryUsageRate {

@@ -17,18 +17,14 @@ func BuildahPodPushImage(nodeName string, nameSpace string, checkpoint string, r
 	podName := util.ModifyCheckpointToImageName(checkpoint)
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			// support millisecond 
 			Name: "buildah-job-" + time.Now().Format("2006-01-02-15-04-05-000"),
-			// TODO: change the name if I want to sent all the images of deployment to the registry
 		},
-		// set ttlSecondsAfterFinished to 30 seconds
 		Spec: batchv1.JobSpec{
-			TTLSecondsAfterFinished: func() *int32 { i := int32(20); return &i }(),
+			TTLSecondsAfterFinished: func() *int32 { i := int32(30); return &i }(),
+			BackoffLimit: func() *int32 { i := int32(0); return &i }(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"app": "buildah",
-					},
+					Labels: map[string]string{"app": "buildah"},
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -43,16 +39,16 @@ func BuildahPodPushImage(nodeName string, nameSpace string, checkpoint string, r
 								},
 							},
 							Command: []string{"/bin/bash"},
-							// builah add the file under checkpointed-image to the new container
 							Args: []string{
 								"-c",
-								"newcontainer=$(buildah from scratch); buildah add $newcontainer " + checkpoint + "  /" + ";buildah config --annotation=io.kubernetes.cri-o.annotations.checkpoint.name=" + podName + " $newcontainer; buildah commit $newcontainer " + podName + ":latest; buildah rm $newcontainer; buildah push --creds=myuser:mypasswd --tls-verify=false localhost/" + podName + ":latest " + registryIp + ":5000/" + podName + ":latest;",
+								"newcontainer=$(buildah from scratch); buildah add $newcontainer " + checkpoint + 
+								" /; buildah config --annotation=io.kubernetes.cri-o.annotations.checkpoint.name=" + podName +
+								" $newcontainer; buildah commit $newcontainer " + podName + ":latest; buildah rm $newcontainer; " +
+								"buildah push --creds=myuser:mypasswd --tls-verify=false localhost/" + podName + ":latest " +
+								registryIp + ":5000/" + podName + ":latest;",
 							},
 							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "checkpointed-image",
-									MountPath: "/var/lib/kubelet/checkpoints/",
-								},
+								{Name: "checkpointed-image", MountPath: "/var/lib/kubelet/checkpoints/"},
 							},
 						},
 					},
@@ -60,26 +56,17 @@ func BuildahPodPushImage(nodeName string, nameSpace string, checkpoint string, r
 						{
 							Name: "checkpointed-image",
 							VolumeSource: corev1.VolumeSource{
-								HostPath: &corev1.HostPathVolumeSource{
-									Path: "/var/lib/kubelet/checkpoints/",
-								},
+								HostPath: &corev1.HostPathVolumeSource{Path: "/var/lib/kubelet/checkpoints/"},
 							},
 						},
 					},
 					NodeName:      nodeName,
-					RestartPolicy: corev1.RestartPolicyNever, // Ensure the job doesn't restart
-					// SecurityContext: &corev1.PodSecurityContext{
-					// 	RunAsUser: int64Ptr(0),
-					// 	RunAsNonRoot: func() *bool { b := false; return &b }(),
-					// 	SeccompProfile: &corev1.SeccompProfile{
-					// 		// type: unconfined
-					// 		Type: "Unconfined",
-					// 	},
-					// },
+					RestartPolicy: corev1.RestartPolicyNever,
 				},
 			},
 		},
 	}
+	
 
 	clientset, err := util.CreateClientSet()
 	if err != nil {

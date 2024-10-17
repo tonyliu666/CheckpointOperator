@@ -254,10 +254,11 @@ deploymetrics:
 	sed -i '/- args:/a\        - --kubelet-insecure-tls' components.yaml
 	mv components.yaml yaml/metrics-server/components.yaml
 	@echo "Updated components.yaml with --kubelet-insecure-tls"
+	kubectl apply -f yaml/metrics-server/components.yaml
 cert-manager: 
 	kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.15.2/cert-manager.yaml
 downmetrics:
-	kubectl delete -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+	kubectl delete -f yaml/metrics-server/components.yaml
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary (ideally with version)

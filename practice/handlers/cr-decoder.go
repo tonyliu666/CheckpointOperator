@@ -55,7 +55,7 @@ spec:
   specify: []
 `, time.Now().Format("20060102-150405"), pod.Name, pod.Namespace, migrationNode, pod.Namespace)
 
-	fmt.Println("pod " + pod.Name + " pod node " + pod.Spec.NodeName + " pod namespace " + pod.Namespace + " is going to be migrated to node " + migrationNode)
+	fmt.Println("pod name: " + pod.Name + " nodeName " + pod.Spec.NodeName + " pod namespace " + pod.Namespace + " is going to be migrated to node " + migrationNode)
 	// 3.Decode the YAML into an unstructured object
 	obj := &unstructured.Unstructured{}
 	_, gvk, err := decUnstructured.Decode([]byte(migrationYAML), nil, obj)
