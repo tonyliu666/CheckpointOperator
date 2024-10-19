@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: metrics-test
+  namespace: default
+spec:
+  containers:
+  - name: metrics
+    image: tonyliu666/metrics:latest
+  
+  

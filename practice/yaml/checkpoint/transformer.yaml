@@ -7,11 +7,7 @@ spec:
   containers:
   - name: transformers
     image: tonyliu666/transformer:latest
-    resources:
-      requests:
-        cpu: "2"
-      limits:
-        cpu: "4"
+    
   nodeName: workernode01
 
 

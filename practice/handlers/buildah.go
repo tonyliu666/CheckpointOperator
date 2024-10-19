@@ -21,7 +21,7 @@ func BuildahPodPushImage(nodeName string, nameSpace string, checkpoint string, r
 		},
 		Spec: batchv1.JobSpec{
 			TTLSecondsAfterFinished: func() *int32 { i := int32(30); return &i }(),
-			BackoffLimit: func() *int32 { i := int32(0); return &i }(),
+			BackoffLimit:            func() *int32 { i := int32(0); return &i }(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{"app": "buildah"},
@@ -41,11 +41,11 @@ func BuildahPodPushImage(nodeName string, nameSpace string, checkpoint string, r
 							Command: []string{"/bin/bash"},
 							Args: []string{
 								"-c",
-								"newcontainer=$(buildah from scratch); buildah add $newcontainer " + checkpoint + 
-								" /; buildah config --annotation=io.kubernetes.cri-o.annotations.checkpoint.name=" + podName +
-								" $newcontainer; buildah commit $newcontainer " + podName + ":latest; buildah rm $newcontainer; " +
-								"buildah push --creds=myuser:mypasswd --tls-verify=false localhost/" + podName + ":latest " +
-								registryIp + ":5000/" + podName + ":latest;",
+								"newcontainer=$(buildah from scratch); buildah add $newcontainer " + checkpoint +
+									" /; buildah config --annotation=io.kubernetes.cri-o.annotations.checkpoint.name=" + podName +
+									" $newcontainer; buildah commit $newcontainer " + podName + ":latest; buildah rm $newcontainer; " +
+									"buildah push --creds=myuser:mypasswd --tls-verify=false localhost/" + podName + ":latest " +
+									registryIp + ":5000/" + podName + ":latest;",
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{Name: "checkpointed-image", MountPath: "/var/lib/kubelet/checkpoints/"},
@@ -66,7 +66,6 @@ func BuildahPodPushImage(nodeName string, nameSpace string, checkpoint string, r
 			},
 		},
 	}
-	
 
 	clientset, err := util.CreateClientSet()
 	if err != nil {

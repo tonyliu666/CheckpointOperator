@@ -49,7 +49,7 @@ type PodMemoryUsage struct {
 }
 
 type PodCPUUsage struct {
-	pod         corev1.Pod
+	pod      corev1.Pod
 	cpuUsage int64
 }
 
@@ -111,7 +111,7 @@ func (r *NodeMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		logger.Error(err, "Failed to get Node")
 		return ctrl.Result{}, err
 	}
-	// if node labels exists node-role.kubernetes.io/control-plane, return 
+	// if node labels exists node-role.kubernetes.io/control-plane, return
 	if _, ok := node.Labels["node-role.kubernetes.io/control-plane"]; ok {
 		return ctrl.Result{}, nil
 	}
@@ -122,11 +122,9 @@ func (r *NodeMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		logger.Error(err, "Failed to get CPU usage on node")
 		return ctrl.Result{}, err
 	}
-	
 
 	// update the cpu_usage_rate_maps
 	cpu_usage_rate_maps[node.Name] = cpuPercentage
-	// logger.Info("cpu usage rate maps", "cpu_usage_rate_maps", cpu_usage_rate_maps)
 
 	// If CPU usage exceeds 70%, deploy the custom resource
 	if cpuPercentage > 60 {
@@ -145,13 +143,12 @@ func (r *NodeMonitorReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 				migrationCPUNode = nodeName
 			}
 		}
-		
+
 		//logger.Info("cpu usage rate maps", "cpu_usage_rate_maps", cpu_usage_rate_maps)
-		
+
 		// go through each pod in pods and replace the podname field in the yaml with the pod name
 		for _, item := range TopFivePodsByCPU {
 			// avoid migrating kube-system pods
-			
 			ok := checkIsValidNamespace(item.pod.Namespace)
 			if !ok {
 				continue
@@ -337,7 +334,7 @@ func (r *NodeMonitorReconciler) getTopFivePodsByCPU(ctx context.Context, nodeNam
 		}
 
 		TopFivePodCPUUsage = append(TopFivePodCPUUsage, PodCPUUsage{
-			pod:         pod,
+			pod:      pod,
 			cpuUsage: totalCPUUsage,
 		})
 	}
@@ -353,6 +350,6 @@ func checkIsValidNamespace(namespace string) bool {
 	case "kafka", "docker-registry", "practice-system", "restore":
 		return false
 	}
-	
+
 	return true
 }

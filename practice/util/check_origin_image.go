@@ -3,6 +3,7 @@ package util
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -21,10 +22,10 @@ func boolUtility(x bool) *bool {
 	return &x
 }
 
-func CheckImageIDExistOnNode(imageIDList []string, dstNode string) error {
+func CheckImageIDExistOnNode(imageIDList []string, dstNode string) (string,error) {
 	clientset, err := CreateClientSet()
 	if err != nil {
-		return err
+		return "",err
 	}
 	args := []string{"-c"}
 	// Initialize an empty command string
@@ -41,7 +42,7 @@ func CheckImageIDExistOnNode(imageIDList []string, dstNode string) error {
 	// Create a pod to run the command on the node
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "check-image-id",
+			Name: "check-image-id-" + time.Now().Format("2006-01-02-15-04-05-000"),
 		},
 		Spec: batchv1.JobSpec{
 			TTLSecondsAfterFinished: func() *int32 { i := int32(5); return &i }(),
@@ -112,9 +113,10 @@ func CheckImageIDExistOnNode(imageIDList []string, dstNode string) error {
 	_, err = clientset.BatchV1().Jobs("docker-registry").Create(context.TODO(), job, metav1.CreateOptions{})
 
 	if err != nil {
-		return err
+		log.Printf("Failed to create job: %v", err)
+		return "",err
 	}
-	return nil
+	return job.Name,nil
 }
 
 func CheckJobStatus(jobName string, status string) error {
@@ -129,7 +131,12 @@ func CheckJobStatus(jobName string, status string) error {
 		time.Sleep(10 * time.Second)
 		job, err := clientset.BatchV1().Jobs("docker-registry").Get(context.TODO(), jobName, metav1.GetOptions{})
 		if err != nil {
-			return err
+			// if the error is not found then ignore
+			if err.Error() == "jobs.batch \""+jobName+"\" not found" {
+				continue
+			} else {
+				return err
+			}
 		}
 		if job.Status.Succeeded == 1 {
 			break

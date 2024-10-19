@@ -18,6 +18,7 @@ metadata:
   name: stress-test
   labels:
     app: stress
+  namespace: default
 spec:
   containers:
   - name: stress
