@@ -7,7 +7,7 @@ metadata:
   namespace: practice-system
 spec:
   # TODO(user): Add fields here
-  podname: redis11
+  podname: redis31
   deployment: 
   namespace: default
   destinationNode: workernode02
