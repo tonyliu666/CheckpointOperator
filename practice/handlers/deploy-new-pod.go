@@ -7,12 +7,12 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	rest "k8s.io/client-go/rest"
-	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	util "tony123.tw/util"
+	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 func OriginalImageChecker(pod *corev1.Pod, dstNode string) error {
@@ -23,16 +23,19 @@ func OriginalImageChecker(pod *corev1.Pod, dstNode string) error {
 	}
 
 	// check the image id of the original pod on the destination node
-	jobName, err := util.CheckImageIDExistOnNode(imageIDList, dstNode)
+	buildahchecker, err := util.CheckImageIDExistOnNode(imageIDList, dstNode)
 	if err != nil {
 		log.Log.Error(err, "unable to check image id")
 		return fmt.Errorf("unable to check image id: %w", err)
 	}
 	// check the check-image-id job is finished or not
-	err = util.CheckJobStatus(jobName, "Succeeded")
+	// set the context for the time limit of the job
+	log.Log.Info("Job name", "jobName", buildahchecker.Name)
+
+	err = util.CheckJobStatus(buildahchecker.Name, "Succeeded")
 	if err != nil {
-		log.Log.Error(err, "unable to check the job status")
-		return fmt.Errorf("unable to check the job status: %w", err)
+		log.Log.Error(err, "unable to check job status")
+		return fmt.Errorf("unable to check job status: %w", err)
 	}
 	return nil
 }
@@ -83,6 +86,7 @@ func createNewPod(migratePod *corev1.Pod, nameSpace string) (*corev1.Pod, error)
 	return migratePod, nil
 }
 
+
 func DeployPodOnNewNode(pod *corev1.Pod) error {
 	msgList, err := ConsumeMessage(pod.Spec.NodeName)
 	if err != nil {
@@ -120,11 +124,11 @@ func DeployPodOnNewNode(pod *corev1.Pod) error {
 			log.Log.Error(err, "unable to count the remaining cpu and memory")
 			return fmt.Errorf("unable to count the remaining cpu and memory: %w", err)
 		}
-
 		// TODO: need to fix this with the resource request and limit
 		memoryLimit := int64(float64(remainingMemory) * 0.2)
 		cpuLimit := int64(float64(remainingCPU) * 0.2)
-
+		
+		
 		migratePod := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: podName,
@@ -136,8 +140,8 @@ func DeployPodOnNewNode(pod *corev1.Pod) error {
 						Image: imageLocation,
 						Resources: corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{
-								corev1.ResourceCPU:    *resource.NewMilliQuantity(1000, resource.DecimalSI),
-								corev1.ResourceMemory: *resource.NewQuantity(5*1024*1024, resource.BinarySI),
+								corev1.ResourceCPU:    *resource.NewMilliQuantity(1, resource.DecimalSI),
+								corev1.ResourceMemory: *resource.NewQuantity(4*1024*1024, resource.BinarySI),
 							},
 							Limits: corev1.ResourceList{
 								corev1.ResourceCPU:    *resource.NewMilliQuantity(cpuLimit, resource.DecimalSI),
@@ -161,9 +165,8 @@ func DeployPodOnNewNode(pod *corev1.Pod) error {
 			log.Log.Error(err, "unable to create new pod")
 			return fmt.Errorf("unable to create new pod: %w", err)
 		}
-
+		
 		// remove the pod from the ProcessPodsMap
-
 		if err := ProduceMessageToDifferentTopics(newpod.Name, info.SourceNamespace, nodeName); err != nil {
 			log.Log.Error(err, "failed to produce different message")
 			return fmt.Errorf("failed to produce message: %w", err)

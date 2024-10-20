@@ -3,7 +3,6 @@ package util
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -12,7 +11,7 @@ import (
 )
 
 const (
-	checkJobStatusTime = 60 // the checktime of the job status, you could adjust here
+	checkJobStatusTime = 30 // the checktime of the job status, you could adjust here
 )
 
 func intUtility(x int64) *int64 {
@@ -22,10 +21,10 @@ func boolUtility(x bool) *bool {
 	return &x
 }
 
-func CheckImageIDExistOnNode(imageIDList []string, dstNode string) (string,error) {
+func CheckImageIDExistOnNode(imageIDList []string, dstNode string)  (*batchv1.Job,error) {
 	clientset, err := CreateClientSet()
 	if err != nil {
-		return "",err
+		return nil,err
 	}
 	args := []string{"-c"}
 	// Initialize an empty command string
@@ -42,10 +41,11 @@ func CheckImageIDExistOnNode(imageIDList []string, dstNode string) (string,error
 	// Create a pod to run the command on the node
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "check-image-id-" + time.Now().Format("2006-01-02-15-04-05-000"),
+			// show the time unit in milliseconds
+			Name: "check-image-id" + time.Now().Format("2006-01-02-15-04-05-000"),
 		},
 		Spec: batchv1.JobSpec{
-			TTLSecondsAfterFinished: func() *int32 { i := int32(5); return &i }(),
+			TTLSecondsAfterFinished: func() *int32 { i := int32(10); return &i }(),
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -110,13 +110,12 @@ func CheckImageIDExistOnNode(imageIDList []string, dstNode string) (string,error
 		},
 	}
 	// Create the job
-	_, err = clientset.BatchV1().Jobs("docker-registry").Create(context.TODO(), job, metav1.CreateOptions{})
+	newjob, err := clientset.BatchV1().Jobs("docker-registry").Create(context.TODO(), job, metav1.CreateOptions{})
 
 	if err != nil {
-		log.Printf("Failed to create job: %v", err)
-		return "",err
+		return nil,err
 	}
-	return job.Name,nil
+	return newjob,nil
 }
 
 func CheckJobStatus(jobName string, status string) error {
@@ -131,10 +130,15 @@ func CheckJobStatus(jobName string, status string) error {
 		time.Sleep(10 * time.Second)
 		job, err := clientset.BatchV1().Jobs("docker-registry").Get(context.TODO(), jobName, metav1.GetOptions{})
 		if err != nil {
-			// if the error is not found then ignore
-			if err.Error() == "jobs.batch \""+jobName+"\" not found" {
-				continue
-			} else {
+			// if the error is like "jobs.batch \"check-image-id-1729355541374\ then ignore it
+			if err.Error() == "jobs.batch \"" + jobName + "\" not found" {
+				if times > checkJobStatusTime {
+					return fmt.Errorf("job checktime exceeded")
+				} else {
+					times++
+					continue
+				}
+			}else{
 				return err
 			}
 		}
