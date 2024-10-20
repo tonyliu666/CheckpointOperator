@@ -21,7 +21,7 @@ func BuildahPodPushImage(nodeName string, nameSpace string, checkpoint string, r
 		},
 		Spec: batchv1.JobSpec{
 			TTLSecondsAfterFinished: func() *int32 { i := int32(30); return &i }(),
-			BackoffLimit: func() *int32 { i := int32(0); return &i }(),
+			BackoffLimit: func() *int32 { i := int32(1); return &i }(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{"app": "buildah"},

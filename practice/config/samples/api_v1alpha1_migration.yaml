@@ -7,12 +7,12 @@ metadata:
   namespace: practice-system
 spec:
   # TODO(user): Add fields here
-  podname: redis31
+  podname: redis44
   deployment: 
   namespace: default
   destinationNode: workernode02
   # an array of strings representing the names of pods to migrate
-  destinationNamespace: migration 
+  destinationNamespace: default
   # if the name listed in specify exists in pod name, then the pod will be migrated
   specify: 
     # - nginx2
