@@ -7,10 +7,10 @@ metadata:
   namespace: practice-system
 spec:
   # TODO(user): Add fields here
-  podname: redis77
+  podname: checkpoint-redis5
   deployment: 
-  namespace: default
-  destinationNode: workernode02
+  namespace: migration
+  destinationNode: workernode01
   # an array of strings representing the names of pods to migrate
   destinationNamespace: migration
   # if the name listed in specify exists in pod name, then the pod will be migrated

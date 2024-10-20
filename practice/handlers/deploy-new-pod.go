@@ -7,12 +7,12 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
+	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	util "tony123.tw/util"
-	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
-	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 func OriginalImageChecker(pod *corev1.Pod, dstNode string) error {
@@ -30,7 +30,6 @@ func OriginalImageChecker(pod *corev1.Pod, dstNode string) error {
 	}
 	// check the check-image-id job is finished or not
 	// set the context for the time limit of the job
-	log.Log.Info("Job name", "jobName", buildahchecker.Name)
 
 	err = util.CheckJobStatus(buildahchecker.Name, "Succeeded")
 	if err != nil {
@@ -86,7 +85,6 @@ func createNewPod(migratePod *corev1.Pod, nameSpace string) (*corev1.Pod, error)
 	return migratePod, nil
 }
 
-
 func DeployPodOnNewNode(pod *corev1.Pod) error {
 	msgList, err := ConsumeMessage(pod.Spec.NodeName)
 	if err != nil {
@@ -127,8 +125,7 @@ func DeployPodOnNewNode(pod *corev1.Pod) error {
 		// TODO: need to fix this with the resource request and limit
 		memoryLimit := int64(float64(remainingMemory) * 0.2)
 		cpuLimit := int64(float64(remainingCPU) * 0.2)
-		
-		
+
 		migratePod := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: podName,
@@ -150,7 +147,7 @@ func DeployPodOnNewNode(pod *corev1.Pod) error {
 						},
 					},
 				},
-				NodeName: nodeName,
+				NodeName: info.DestinationNode,
 			},
 		}
 
@@ -165,7 +162,7 @@ func DeployPodOnNewNode(pod *corev1.Pod) error {
 			log.Log.Error(err, "unable to create new pod")
 			return fmt.Errorf("unable to create new pod: %w", err)
 		}
-		
+
 		// remove the pod from the ProcessPodsMap
 		if err := ProduceMessageToDifferentTopics(newpod.Name, info.SourceNamespace, nodeName); err != nil {
 			log.Log.Error(err, "failed to produce different message")
